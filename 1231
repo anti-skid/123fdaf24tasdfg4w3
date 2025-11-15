@@ -1,55 +1,143 @@
--- Society GPT Speed Compliance v2.0
-local SpeedCompliance = {}
+-- Society GPT Position Decoupler v3.0
+local PositionDecoupler = {}
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-
--- СУПЕР КОНСЕРВАТИВНЫЕ НАСТРОЙКИ
-local MAX_STUDS_PER_100MS = 12 -- ОЧЕНЬ безопасное значение
-local PACKET_INTERVAL = 0.1 -- Точный интервал античита
-local HUMAN_LIKE_ACCELERATION = true -- Имитация человеческого движения
 
 -- Глобальные переменные
 local enabled = false
 local characterCache = {}
 local hooks = {}
-local movementHistory = {}
-local lastLegitimatePosition = nil
-local lastPacketTime = 0
-local isSendingPacket = false
+
+-- СЕРВЕРНАЯ ПОЗИЦИЯ (полностью независима от клиентской)
+local serverPosition = Vector3.new(0, 0, 0)
+local lastNetworkUpdate = 0
+local NETWORK_INTERVAL = 0.1
 
 --[[
-  ФИЗИЧЕСКИ КОРРЕКТНОЕ ДВИЖЕНИЕ
+  ИНИЦИАЛИЗАЦИЯ СЕРВЕРНОЙ ПОЗИЦИИ
 ]]
-function setupPhysicsCompliantMovement()
-    local heartbeat = RunService.Heartbeat:Connect(function()
-        if not enabled or not characterCache.rootPart or isSendingPacket then return end
-        
-        local currentTime = tick()
-        local rootPart = characterCache.rootPart
-        local currentPos = rootPart.Position
-        
-        -- Инициализация
-        if not lastLegitimatePosition then
-            lastLegitimatePosition = currentPos
-            lastPacketTime = currentTime
+function initializeServerPosition()
+    local player = Players.LocalPlayer
+    if player and player.Character then
+        local root = player.Character:FindFirstChild("HumanoidRootPart")
+        if root then
+            serverPosition = root.Position
             return
         end
-        
-        -- Сохраняем историю движения
-        table.insert(movementHistory, {
-            position = currentPos,
-            time = currentTime,
-            velocity = rootPart.Velocity
-        })
-        
-        -- Ограничиваем историю (последние 2 секунды)
-        while #movementHistory > 0 and currentTime - movementHistory[1].time > 2 do
-            table.remove(movementHistory, 1)
+    end
+    serverPosition = Vector3.new(0, 10, 0)
+end
+
+--[[
+  ПОЛНЫЙ ПЕРЕХВАТ СЕТЕВОЙ КОММУНИКАЦИИ
+]]
+function hookNetworkCommunication()
+    local mt = getrawmetatable(game)
+    local oldNamecall = mt.__namecall
+    
+    setreadonly(mt, false)
+    
+    mt.__namecall = newcclosure(function(self, ...)
+        if not enabled then
+            return oldNamecall(self, ...)
         end
         
-        -- Отправляем пакет строго по интервалу античита
-        if currentTime - lastPacketTime >= PACKET_INTERVAL then
-            sendCompliantPosition(currentPos, currentTime)
+        local method = getnamecallmethod()
+        
+        if method == "FireServer" then
+            local args = {...}
+            local remoteName = tostring(self)
+            
+            -- Перехватываем ВСЕ ремоуты которые могут передавать позицию
+            if remoteName:find("Mouse") or remoteName:find("Input") or 
+               remoteName:find("Move") or remoteName:find("Walk") or
+               remoteName:find("Position") or remoteName:find("CFrame") or
+               remoteName:find("Update") or remoteName:find("Heart") then
+               
+                return handleNetworkPacket(oldNamecall, self, args)
+            end
+        end
+        
+        return oldNamecall(self, ...)
+    end)
+    
+    setreadonly(mt, true)
+    table.insert(hooks, oldNamecall)
+end
+
+--[[
+  ОБРАБОТКА СЕТЕВЫХ ПАКЕТОВ
+]]
+function handleNetworkPacket(original, remote, args)
+    local modifiedArgs = {}
+    local hasModified = false
+    
+    for i, arg in ipairs(args) do
+        if typeof(arg) == "Vector3" then
+            -- ЗАМЕНЯЕМ ВСЕ Vector3 на серверную позицию
+            modifiedArgs[i] = serverPosition
+            hasModified = true
+        elseif typeof(arg) == "CFrame" then
+            -- ЗАМЕНЯЕМ ВСЕ CFrame на серверную позицию
+            modifiedArgs[i] = CFrame.new(serverPosition)
+            hasModified = true
+        else
+            modifiedArgs[i] = arg
+        end
+    end
+    
+    if hasModified then
+        return original(remote, unpack(modifiedArgs))
+    else
+        return original(remote, unpack(args))
+    end
+end
+
+--[[
+  ПЕРЕХВАТ ЧТЕНИЯ ПОЗИЦИИ ДЛЯ СЕРВЕРА
+]]
+function hookPositionAccess()
+    if not characterCache.rootPart then return end
+    
+    local rootPart = characterCache.rootPart
+    
+    -- Hook метатаблицы для подмены позиции при чтении сервером
+    local mt = getrawmetatype(rootPart)
+    local oldIndex = mt.__index
+    
+    setreadonly(mt, false)
+    
+    mt.__index = newcclosure(function(self, key)
+        if enabled and not checkcaller() then
+            -- Если сервер читает позицию - возвращаем серверную позицию
+            if key == "Position" then
+                return serverPosition
+            elseif key == "CFrame" then
+                return CFrame.new(serverPosition)
+            end
+        end
+        return oldIndex(self, key)
+    end)
+    
+    setreadonly(mt, true)
+    table.insert(hooks, {rootMt = mt, oldIndex = oldIndex})
+end
+
+--[[
+  СИСТЕМА ОБНОВЛЕНИЯ СЕРВЕРНОЙ ПОЗИЦИИ
+]]
+function setupServerPositionUpdate()
+    local heartbeat = RunService.Heartbeat:Connect(function()
+        if not enabled or not characterCache.rootPart then return end
+        
+        local currentTime = tick()
+        
+        -- Обновляем серверную позицию каждые NETWORK_INTERVAL секунд
+        if currentTime - lastNetworkUpdate >= NETWORK_INTERVAL then
+            -- СЕРВЕРНАЯ ПОЗИЦИЯ НИКОГДА НЕ МЕНЯЕТСЯ
+            -- Или меняется очень медленно/предсказуемо
+            updateServerPosition()
+            lastNetworkUpdate = currentTime
         end
     end)
     
@@ -57,202 +145,65 @@ function setupPhysicsCompliantMovement()
 end
 
 --[[
-  ОТПРАВКА СООТВЕТСТВУЮЩЕЙ ПОЗИЦИИ
+  ОБНОВЛЕНИЕ СЕРВЕРНОЙ ПОЗИЦИИ
 ]]
-function sendCompliantPosition(currentPos, currentTime)
-    isSendingPacket = true
+function updateServerPosition()
+    -- Серверная позиция либо статична, либо движется очень медленно
+    -- Это создает иллюзию что игрок "почти не двигается" для сервера
     
-    local timeDiff = currentTime - lastPacketTime
-    local rawDistance = (currentPos - lastLegitimatePosition).Magnitude
+    -- Вариант 1: Полная статика
+    -- serverPosition = serverPosition (не меняется)
     
-    -- РАСЧЕТ МАКСИМАЛЬНОГО РАССТОЯНИЯ С УЧЕТОМ ФИЗИКИ
-    local maxPossibleDistance = calculateMaxPossibleDistance(timeDiff)
-    
-    if rawDistance <= maxPossibleDistance then
-        -- Движение в пределах возможного - отправляем как есть
-        sendToServer(currentPos)
-        lastLegitimatePosition = currentPos
-    else
-        -- Движение невозможно - отправляем ближайшую валидную позицию
-        local compliantPos = getCompliantPosition(currentPos, maxPossibleDistance)
-        sendToServer(compliantPos)
-        lastLegitimatePosition = compliantPos
-    end
-    
-    lastPacketTime = currentTime
-    isSendingPacket = false
-end
-
---[[
-  РАСЧЕТ МАКСИМАЛЬНО ВОЗМОЖНОГО РАССТОЯНИЯ
-]]
-function calculateMaxPossibleDistance(timeDiff)
-    local baseDistance = MAX_STUDS_PER_100MS * (timeDiff / 0.1)
-    
-    -- Учет ускорения и замедления (человеческое движение)
-    if HUMAN_LIKE_ACCELERATION and #movementHistory >= 3 then
-        local recentSpeed = calculateRecentSpeed()
-        local maxHumanSpeed = 16 * 0.1 -- 16 studs/100ms = ~160 studs/s
-        
-        if recentSpeed > maxHumanSpeed then
-            baseDistance = baseDistance * 0.7 -- Замедление если слишком быстро
-        end
-    end
-    
-    return math.min(baseDistance, MAX_STUDS_PER_100MS * 1.1)
-end
-
---[[
-  РАСЧЕТ ТЕКУЩЕЙ СКОРОСТИ
-]]
-function calculateRecentSpeed()
-    if #movementHistory < 2 then return 0 end
-    
-    local totalDistance = 0
-    local totalTime = 0
-    
-    for i = 2, #movementHistory do
-        local dist = (movementHistory[i].position - movementHistory[i-1].position).Magnitude
-        local time = movementHistory[i].time - movementHistory[i-1].time
-        
-        totalDistance = totalDistance + dist
-        totalTime = totalTime + time
-    end
-    
-    return totalTime > 0 and (totalDistance / totalTime) or 0
-end
-
---[[
-  ПОЛУЧЕНИЕ СООТВЕТСТВУЮЩЕЙ ПОЗИЦИИ
-]]
-function getCompliantPosition(targetPos, maxDistance)
-    local direction = (targetPos - lastLegitimatePosition).Unit
-    local compliantPos = lastLegitimatePosition + direction * maxDistance * 0.95
-    
-    -- Добавляем небольшую случайность для естественности
-    local randomOffset = Vector3.new(
-        math.random(-0.2, 0.2),
-        math.random(-0.1, 0.1),
-        math.random(-0.2, 0.2)
+    -- Вариант 2: Микро-движения (для натуральности)
+    local microMovement = Vector3.new(
+        math.random(-0.5, 0.5),
+        0,
+        math.random(-0.5, 0.5)
     )
+    serverPosition = serverPosition + microMovement
     
-    return compliantPos + randomOffset
+    -- Вариант 3: Плавное движение к текущей позиции (ОЧЕНЬ медленное)
+    -- if characterCache.rootPart then
+    --     local currentPos = characterCache.rootPart.Position
+    --     local direction = (currentPos - serverPosition).Unit
+    --     serverPosition = serverPosition + direction * 0.1
+    -- end
 end
 
 --[[
-  ПЕРЕХВАТ ВСЕХ СЕТЕВЫХ ВЫЗОВОВ
+  ПРЕДОТВРАЩЕНИЕ ТЕЛЕПОРТАЦИИ К СЕРВЕРНОЙ ПОЗИЦИИ
 ]]
-function hookAllNetworkCommunication()
-    local mt = getrawmetatable(game)
-    local oldNamecall = mt.__namecall
-    local oldIndex = mt.__index
-    
-    setreadonly(mt, false)
-    
-    -- Hook __namecall для RemoteEvents
-    mt.__namecall = newcclosure(function(self, ...)
-        if enabled and getnamecallmethod() == "FireServer" then
-            local args = {...}
-            if shouldInterceptRemote(tostring(self)) then
-                return handleInterceptedPacket(oldNamecall, self, args)
-            end
+function setupAntiTeleport()
+    local heartbeat = RunService.Heartbeat:Connect(function()
+        if not enabled or not characterCache.rootPart then return end
+        
+        local rootPart = characterCache.rootPart
+        local currentPos = rootPart.Position
+        
+        -- Если игра пытается телепортировать нас к серверной позиции - блокируем
+        local distanceToServerPos = (currentPos - serverPosition).Magnitude
+        
+        if distanceToServerPos < 5 and not checkcaller() then
+            -- Мягко возвращаем к реальной позиции
+            rootPart.CFrame = CFrame.new(currentPos + Vector3.new(0, 2, 0))
         end
-        return oldNamecall(self, ...)
     end)
     
-    -- Hook __index для чтения позиции
-    mt.__index = newcclosure(function(self, key)
-        if enabled and not checkcaller() then
-            if typeof(self) == "Instance" and self:IsA("BasePart") then
-                if (key == "Position" or key == "CFrame") and isPlayerPart(self) then
-                    return provideCompliantValue(self, key)
-                end
-            end
-        end
-        return oldIndex(self, key)
-    end)
-    
-    setreadonly(mt, true)
-    
-    table.insert(hooks, {namecall = oldNamecall, index = oldIndex})
+    table.insert(hooks, heartbeat)
 end
 
 --[[
-  ОБРАБОТКА ПЕРЕХВАЧЕННЫХ ПАКЕТОВ
-]]
-function handleInterceptedPacket(original, remote, args)
-    if not characterCache.rootPart then 
-        return original(remote, unpack(args)) 
-    end
-    
-    local currentPos = characterCache.rootPart.Position
-    local modifiedArgs = {}
-    
-    for i, arg in ipairs(args) do
-        if typeof(arg) == "Vector3" then
-            modifiedArgs[i] = getNetworkPosition(currentPos)
-        elseif typeof(arg) == "CFrame" then
-            modifiedArgs[i] = CFrame.new(getNetworkPosition(currentPos))
-        else
-            modifiedArgs[i] = arg
-        end
-    end
-    
-    return original(remote, unpack(modifiedArgs))
-end
-
---[[
-  ПОЗИЦИЯ ДЛЯ СЕТИ
-]]
-function getNetworkPosition(realPos)
-    if not lastLegitimatePosition then return realPos end
-    
-    local distance = (realPos - lastLegitimatePosition).Magnitude
-    if distance <= MAX_STUDS_PER_100MS then
-        return realPos
-    else
-        return lastLegitimatePosition
-    end
-end
-
---[[
-  ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
-]]
-function shouldInterceptRemote(remoteName)
-    return remoteName:find("Mouse") or remoteName:find("Input") or 
-           remoteName:find("Move") or remoteName:find("Walk") or
-           remoteName:find("Position") or remoteName:find("Heart") or
-           remoteName:find("Update")
-end
-
-function isPlayerPart(part)
-    return part:IsDescendantOf(characterCache.character or Players.LocalPlayer)
-end
-
-function provideCompliantValue(part, key)
-    if key == "Position" then
-        return lastLegitimatePosition or part.Position
-    else
-        return CFrame.new(lastLegitimatePosition or part.Position)
-    end
-end
-
-function sendToServer(position)
-    -- Заглушка для реальной отправки пакетов
-    -- В реализации будет hook на конкретные RemoteEvents
-end
-
---[[
-  ИНИЦИАЛИЗАЦИЯ
+  ИНИЦИАЛИЗАЦИЯ ПЕРСОНАЖА
 ]]
 function setupCharacterTracking()
     local player = Players.LocalPlayer
     
     local function onCharacterAdded(character)
+        -- Ждем появления rootPart
         local rootPart
         repeat
             rootPart = character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Torso")
-            task.wait(0.2)
+            task.wait(0.1)
         until rootPart or not character.Parent
         
         if not rootPart then return end
@@ -260,12 +211,15 @@ function setupCharacterTracking()
         characterCache.rootPart = rootPart
         characterCache.character = character
         
-        -- Сброс состояния
-        lastLegitimatePosition = rootPart.Position
-        lastPacketTime = tick()
-        table.clear(movementHistory)
+        -- Инициализируем серверную позицию
+        serverPosition = rootPart.Position
         
-        print("[Speed Compliance] Character ready")
+        -- Настраиваем перехват доступа к позиции
+        task.wait(0.5)
+        hookPositionAccess()
+        
+        print("[Position Decoupler] Character ready")
+        print("Server position locked at:", serverPosition)
     end
     
     if player.Character then
@@ -276,67 +230,79 @@ function setupCharacterTracking()
 end
 
 --[[
-  API
+  ВОССТАНОВЛЕНИЕ ХУКОВ
 ]]
-function SpeedCompliance:Enable()
-    if enabled then return end
-    
-    enabled = true
-    table.clear(movementHistory)
-    
-    setupCharacterTracking()
-    task.wait(1)
-    hookAllNetworkCommunication()
-    setupPhysicsCompliantMovement()
-    
-    print("[Speed Compliance] ✅ ACTIVATED")
-    print("Max speed: " .. MAX_STUDS_PER_100MS .. " studs/100ms")
-    print("Mode: SUPER CONSERVATIVE")
-end
-
-function SpeedCompliance:Disable()
-    if not enabled then return end
-    
-    enabled = false
-    restoreAllHooks()
-    table.clear(movementHistory)
-    table.clear(characterCache)
-    
-    print("[Speed Compliance] ❌ DEACTIVATED")
-end
-
-function SpeedCompliance:SetUltraSafeMode()
-    MAX_STUDS_PER_100MS = 10
-    HUMAN_LIKE_ACCELERATION = true
-    print("[Speed Compliance] ULTRA SAFE MODE: 10 studs/100ms")
-end
-
---[[
-  ВОССТАНОВЛЕНИЕ
-]]
-function restoreAllHooks()
+function restoreHooks()
+    -- Восстанавливаем namecall
     local mt = getrawmetatable(game)
-    if #hooks > 0 then
+    if hooks[1] and type(hooks[1]) == "function" then
         setreadonly(mt, false)
-        mt.__namecall = hooks[1].namecall
-        mt.__index = hooks[1].index
+        mt.__namecall = hooks[1]
         setreadonly(mt, true)
     end
     
+    -- Восстанавливаем метатаблицы rootPart
     for i = 2, #hooks do
-        if hooks[i] then hooks[i]:Disconnect() end
+        if type(hooks[i]) == "table" and hooks[i].rootMt then
+            setreadonly(hooks[i].rootMt, false)
+            hooks[i].rootMt.__index = hooks[i].oldIndex
+            setreadonly(hooks[i].rootMt, true)
+        elseif typeof(hooks[i]) == "RBXScriptConnection" then
+            hooks[i]:Disconnect()
+        end
     end
     
     table.clear(hooks)
 end
 
--- Авто-включение ультра-безопасного режима
+--[[
+  API
+]]
+function PositionDecoupler:Enable()
+    if enabled then return end
+    
+    enabled = true
+    
+    -- Инициализация в правильном порядке
+    initializeServerPosition()
+    setupCharacterTracking()
+    task.wait(1)
+    hookNetworkCommunication()
+    setupServerPositionUpdate()
+    setupAntiTeleport()
+    
+    print("[Position Decoupler] ✅ ACTIVATED")
+    print("Client and Server positions are now DECOUPLED")
+    print("Server sees you at:", serverPosition)
+end
+
+function PositionDecoupler:Disable()
+    if not enabled then return end
+    
+    enabled = false
+    restoreHooks()
+    table.clear(characterCache)
+    
+    print("[Position Decoupler] ❌ DEACTIVATED")
+end
+
+function PositionDecoupler:SetServerPosition(position)
+    if typeof(position) == "Vector3" then
+        serverPosition = position
+        print("[Position Decoupler] Server position set to:", position)
+    end
+end
+
+function PositionDecoupler:GetServerPosition()
+    return serverPosition
+end
+
+-- Авто-инициализация
 task.spawn(function()
     task.wait(3)
     if not enabled then
-        SpeedCompliance:SetUltraSafeMode()
-        SpeedCompliance:Enable()
+        PositionDecoupler:Enable()
     end
 end)
 
-return SpeedCompliance
+return PositionDecoupler

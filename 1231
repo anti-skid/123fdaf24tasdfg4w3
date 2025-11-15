@@ -5,7 +5,7 @@ local RunService = game:GetService("RunService")
 
 -- Конфигурация (консервативные значения)
 local MAX_ALLOWED_DISTANCE = 14 -- 14 вместо 15 для запаса
-local PACKET_INTERVAL = 0.08 -- Чаще чем 0.1s
+local PACKET_INTERVAL = 0.0001 -- Чаще чем 0.1s
 local SAFETY_MARGIN = 0.9 -- 90% от лимита для надежности
 
 -- Глобальные переменные

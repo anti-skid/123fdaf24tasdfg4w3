@@ -1,308 +1,188 @@
--- Society GPT Position Decoupler v3.0
-local PositionDecoupler = {}
+-- Society GPT Anti-Cheat Disabler v1.0
+local AntiCheatDisabler = {}
+
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-
--- Глобальные переменные
-local enabled = false
-local characterCache = {}
-local hooks = {}
-
--- СЕРВЕРНАЯ ПОЗИЦИЯ (полностью независима от клиентской)
-local serverPosition = Vector3.new(0, 0, 0)
-local lastNetworkUpdate = 0
-local NETWORK_INTERVAL = 0.1
+local PlayerScripts = Players.LocalPlayer:WaitForChild("PlayerScripts")
 
 --[[
-  ИНИЦИАЛИЗАЦИЯ СЕРВЕРНОЙ ПОЗИЦИИ
+  ОТКЛЮЧЕНИЕ АНТИЧИТ ПРОВЕРОК В СКРИПТЕ :3
 ]]
-function initializeServerPosition()
-    local player = Players.LocalPlayer
-    if player and player.Character then
-        local root = player.Character:FindFirstChild("HumanoidRootPart")
-        if root then
-            serverPosition = root.Position
+function AntiCheatDisabler:DisableAntiCheat()
+    local targetScript = PlayerScripts:FindFirstChild(":3")
+    
+    if not targetScript then
+        print("❌ Script ':3' not found in PlayerScripts")
+        return false
+    end
+    
+    -- Сохраняем оригинальный код
+    local originalSource = targetScript.Source
+    
+    -- Отключаем античит проверки
+    local disabledSource = originalSource:gsub("sendKick%([^%)]+%)", "print(\"Anti-cheat blocked: \" .. ...)")
+                   :gsub("game:GetService%(\"Players\"%).LocalPlayer:Kick%([^%)]+%)", "print(\"Kick blocked\")")
+                   :gsub("checkCFrameMovement", "function checkCFrameMovement() return false end")
+                   :gsub("checkCharacterSizes", "function checkCharacterSizes() return false end")
+                   :gsub("startPartMonitoring", "function startPartMonitoring() while true do wait(1) end end")
+                   :gsub("startCFrameMonitoring", "function startCFrameMonitoring() while true do wait(1) end end")
+                   :gsub("startDesyncMonitoring", "function startDesyncMonitoring() while true do wait(1) end end")
+    
+    -- Заменяем исходный код
+    targetScript.Source = disabledSource
+    
+    print("✅ Anti-cheat checks disabled in script ':3'")
+    return true
+end
+
+--[[
+  БЫСТРОЕ ОТКЛЮЧЕНИЕ ОСНОВНЫХ ПРОВЕРОК
+]]
+function AntiCheatDisabler:QuickDisable()
+    local targetScript = PlayerScripts:FindFirstChild(":3")
+    
+    if not targetScript then
+        print("❌ Script ':3' not found")
+        return false
+    end
+    
+    local source = targetScript.Source
+    
+    -- Отключаем основные кик-функции
+    source = source:gsub("function sendKick%([^%)]*%)[^}]+end", 
+        [[function sendKick(reason)
+            print("[ANTI-CHEAT BLOCKED] Would kick for:", reason)
             return
-        end
-    end
-    serverPosition = Vector3.new(0, 10, 0)
+        end]])
+    
+    -- Отключаем проверки движения
+    source = source:gsub("function checkCFrameMovement%([^%)]*%)[^}]+end",
+        [[function checkCFrameMovement()
+            return false
+        end]])
+    
+    -- Отключаем проверки размера
+    source = source:gsub("function checkCharacterSizes%([^%)]*%)[^}]+end", 
+        [[function checkCharacterSizes()
+            return false
+        end]])
+    
+    targetScript.Source = source
+    print("✅ Quick anti-cheat disable completed")
+    return true
 end
 
 --[[
-  ПОЛНЫЙ ПЕРЕХВАТ СЕТЕВОЙ КОММУНИКАЦИИ
+  ПОЛНОЕ ОТКЛЮЧЕНИЕ ВСЕХ ПРОВЕРОК
 ]]
-function hookNetworkCommunication()
-    local mt = getrawmetatable(game)
-    local oldNamecall = mt.__namecall
+function AntiCheatDisabler:FullDisable()
+    local targetScript = PlayerScripts:FindFirstChild(":3")
     
-    setreadonly(mt, false)
+    if not targetScript then
+        print("❌ Script ':3' not found")
+        return false
+    end
     
-    mt.__namecall = newcclosure(function(self, ...)
-        if not enabled then
-            return oldNamecall(self, ...)
-        end
-        
-        local method = getnamecallmethod()
-        
-        if method == "FireServer" then
-            local args = {...}
-            local remoteName = tostring(self)
-            
-            -- Перехватываем ВСЕ ремоуты которые могут передавать позицию
-            if remoteName:find("Mouse") or remoteName:find("Input") or 
-               remoteName:find("Move") or remoteName:find("Walk") or
-               remoteName:find("Position") or remoteName:find("CFrame") or
-               remoteName:find("Update") or remoteName:find("Heart") then
-               
-                return handleNetworkPacket(oldNamecall, self, args)
-            end
-        end
-        
-        return oldNamecall(self, ...)
-    end)
+    local source = targetScript.Source
     
-    setreadonly(mt, true)
-    table.insert(hooks, oldNamecall)
+    -- 1. Отключаем все кик-функции
+    source = source:gsub("sendKick%([^%)]+%)", "print(\"[BLOCKED] \" .. ...)")
+    
+    -- 2. Отключаем проверки скорости
+    source = source:gsub("SPEED_THRESHOLD = %d+", "SPEED_THRESHOLD = 999999")
+    source = source:gsub("MAX_ALLOWED_DISTANCE = %d+", "MAX_ALLOWED_DISTANCE = 999999")
+    
+    -- 3. Отключаем мониторинги
+    local monitoringFunctions = {
+        "checkCFrameMovement", "checkCharacterSizes", "startPartMonitoring",
+        "startSizeMonitoring", "startCFrameMonitoring", "startDesyncMonitoring"
+    }
+    
+    for _, funcName in ipairs(monitoringFunctions) do
+        source = source:gsub("function " .. funcName .. "%([^%)]*%)[^}]+end",
+            "function " .. funcName .. "() while true do wait(10) end end")
+    end
+    
+    -- 4. Отключаем проверки Walkspeed
+    source = source:gsub("Config%.WalkspeedProtect%.enabled = true", "Config.WalkspeedProtect.enabled = false")
+    source = source:gsub("Config%.WalkspeedProtect%.maxWalkSpeed = %d+", "Config.WalkspeedProtect.maxWalkSpeed = 999")
+    
+    -- 5. Отключаем проверки Hitbox
+    source = source:gsub("Config%.HitboxProtect%.enabled = true", "Config.HitboxProtect.enabled = false")
+    
+    -- 6. Отключаем проверки Fly
+    source = source:gsub("Config%.FlyProtect%.enabled = true", "Config.FlyProtect.enabled = false")
+    
+    -- 7. Отключаем проверки NoClip
+    source = source:gsub("Config%.NoClipProtect%.enabled = true", "Config.NoClipProtect.enabled = false")
+    
+    targetScript.Source = source
+    print("✅ Full anti-cheat disable completed")
+    return true
 end
 
 --[[
-  ОБРАБОТКА СЕТЕВЫХ ПАКЕТОВ
+  АВТОМАТИЧЕСКОЕ ОТКЛЮЧЕНИЕ
 ]]
-function handleNetworkPacket(original, remote, args)
-    local modifiedArgs = {}
-    local hasModified = false
+function AntiCheatDisabler:AutoDisable()
+    local targetScript = PlayerScripts:FindFirstChild(":3")
     
-    for i, arg in ipairs(args) do
-        if typeof(arg) == "Vector3" then
-            -- ЗАМЕНЯЕМ ВСЕ Vector3 на серверную позицию
-            modifiedArgs[i] = serverPosition
-            hasModified = true
-        elseif typeof(arg) == "CFrame" then
-            -- ЗАМЕНЯЕМ ВСЕ CFrame на серверную позицию
-            modifiedArgs[i] = CFrame.new(serverPosition)
-            hasModified = true
-        else
-            modifiedArgs[i] = arg
-        end
+    if not targetScript then
+        print("❌ Script ':3' not found - nothing to disable")
+        return false
     end
     
-    if hasModified then
-        return original(remote, unpack(modifiedArgs))
+    print("🔍 Society GPT Anti-Cheat Disabler - Analyzing script...")
+    
+    -- Применяем полное отключение
+    local success = self:FullDisable()
+    
+    if success then
+        print("🎉 SUCCESS: All anti-cheat checks disabled!")
+        print("✅ Script ':3' remains functional without restrictions")
     else
-        return original(remote, unpack(args))
+        print("❌ FAILED: Could not disable anti-cheat")
+    end
+    
+    return success
+end
+
+--[[
+  ПРОВЕРКА СТАТУСА
+]]
+function AntiCheatDisabler:GetStatus()
+    local targetScript = PlayerScripts:FindFirstChild(":3")
+    
+    if not targetScript then
+        return "NO_SCRIPT"
+    end
+    
+    local source = targetScript.Source
+    
+    -- Проверяем наличие активных античит проверок
+    local hasKick = source:find("sendKick") ~= nil
+    local hasSpeedCheck = source:find("SPEED_THRESHOLD") ~= nil
+    local hasCFrameCheck = source:find("checkCFrameMovement") ~= nil
+    
+    if hasKick or hasSpeedCheck or hasCFrameCheck then
+        return "ANTICHEAT_ACTIVE"
+    else
+        return "ANTICHEAT_DISABLED"
     end
 end
 
---[[
-  ПЕРЕХВАТ ЧТЕНИЯ ПОЗИЦИИ ДЛЯ СЕРВЕРА
-]]
-function hookPositionAccess()
-    if not characterCache.rootPart then return end
-    
-    local rootPart = characterCache.rootPart
-    
-    -- Hook метатаблицы для подмены позиции при чтении сервером
-    local mt = getrawmetatype(rootPart)
-    local oldIndex = mt.__index
-    
-    setreadonly(mt, false)
-    
-    mt.__index = newcclosure(function(self, key)
-        if enabled and not checkcaller() then
-            -- Если сервер читает позицию - возвращаем серверную позицию
-            if key == "Position" then
-                return serverPosition
-            elseif key == "CFrame" then
-                return CFrame.new(serverPosition)
-            end
-        end
-        return oldIndex(self, key)
-    end)
-    
-    setreadonly(mt, true)
-    table.insert(hooks, {rootMt = mt, oldIndex = oldIndex})
-end
-
---[[
-  СИСТЕМА ОБНОВЛЕНИЯ СЕРВЕРНОЙ ПОЗИЦИИ
-]]
-function setupServerPositionUpdate()
-    local heartbeat = RunService.Heartbeat:Connect(function()
-        if not enabled or not characterCache.rootPart then return end
-        
-        local currentTime = tick()
-        
-        -- Обновляем серверную позицию каждые NETWORK_INTERVAL секунд
-        if currentTime - lastNetworkUpdate >= NETWORK_INTERVAL then
-            -- СЕРВЕРНАЯ ПОЗИЦИЯ НИКОГДА НЕ МЕНЯЕТСЯ
-            -- Или меняется очень медленно/предсказуемо
-            updateServerPosition()
-            lastNetworkUpdate = currentTime
-        end
-    end)
-    
-    table.insert(hooks, heartbeat)
-end
-
---[[
-  ОБНОВЛЕНИЕ СЕРВЕРНОЙ ПОЗИЦИИ
-]]
-function updateServerPosition()
-    -- Серверная позиция либо статична, либо движется очень медленно
-    -- Это создает иллюзию что игрок "почти не двигается" для сервера
-    
-    -- Вариант 1: Полная статика
-    -- serverPosition = serverPosition (не меняется)
-    
-    -- Вариант 2: Микро-движения (для натуральности)
-    local microMovement = Vector3.new(
-        math.random(-0.5, 0.5),
-        0,
-        math.random(-0.5, 0.5)
-    )
-    serverPosition = serverPosition + microMovement
-    
-    -- Вариант 3: Плавное движение к текущей позиции (ОЧЕНЬ медленное)
-    -- if characterCache.rootPart then
-    --     local currentPos = characterCache.rootPart.Position
-    --     local direction = (currentPos - serverPosition).Unit
-    --     serverPosition = serverPosition + direction * 0.1
-    -- end
-end
-
---[[
-  ПРЕДОТВРАЩЕНИЕ ТЕЛЕПОРТАЦИИ К СЕРВЕРНОЙ ПОЗИЦИИ
-]]
-function setupAntiTeleport()
-    local heartbeat = RunService.Heartbeat:Connect(function()
-        if not enabled or not characterCache.rootPart then return end
-        
-        local rootPart = characterCache.rootPart
-        local currentPos = rootPart.Position
-        
-        -- Если игра пытается телепортировать нас к серверной позиции - блокируем
-        local distanceToServerPos = (currentPos - serverPosition).Magnitude
-        
-        if distanceToServerPos < 5 and not checkcaller() then
-            -- Мягко возвращаем к реальной позиции
-            rootPart.CFrame = CFrame.new(currentPos + Vector3.new(0, 2, 0))
-        end
-    end)
-    
-    table.insert(hooks, heartbeat)
-end
-
---[[
-  ИНИЦИАЛИЗАЦИЯ ПЕРСОНАЖА
-]]
-function setupCharacterTracking()
-    local player = Players.LocalPlayer
-    
-    local function onCharacterAdded(character)
-        -- Ждем появления rootPart
-        local rootPart
-        repeat
-            rootPart = character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Torso")
-            task.wait(0.1)
-        until rootPart or not character.Parent
-        
-        if not rootPart then return end
-        
-        characterCache.rootPart = rootPart
-        characterCache.character = character
-        
-        -- Инициализируем серверную позицию
-        serverPosition = rootPart.Position
-        
-        -- Настраиваем перехват доступа к позиции
-        task.wait(0.5)
-        hookPositionAccess()
-        
-        print("[Position Decoupler] Character ready")
-        print("Server position locked at:", serverPosition)
-    end
-    
-    if player.Character then
-        task.spawn(onCharacterAdded, player.Character)
-    end
-    
-    player.CharacterAdded:Connect(onCharacterAdded)
-end
-
---[[
-  ВОССТАНОВЛЕНИЕ ХУКОВ
-]]
-function restoreHooks()
-    -- Восстанавливаем namecall
-    local mt = getrawmetatable(game)
-    if hooks[1] and type(hooks[1]) == "function" then
-        setreadonly(mt, false)
-        mt.__namecall = hooks[1]
-        setreadonly(mt, true)
-    end
-    
-    -- Восстанавливаем метатаблицы rootPart
-    for i = 2, #hooks do
-        if type(hooks[i]) == "table" and hooks[i].rootMt then
-            setreadonly(hooks[i].rootMt, false)
-            hooks[i].rootMt.__index = hooks[i].oldIndex
-            setreadonly(hooks[i].rootMt, true)
-        elseif typeof(hooks[i]) == "RBXScriptConnection" then
-            hooks[i]:Disconnect()
-        end
-    end
-    
-    table.clear(hooks)
-end
-
---[[
-  API
-]]
-function PositionDecoupler:Enable()
-    if enabled then return end
-    
-    enabled = true
-    
-    -- Инициализация в правильном порядке
-    initializeServerPosition()
-    setupCharacterTracking()
-    task.wait(1)
-    hookNetworkCommunication()
-    setupServerPositionUpdate()
-    setupAntiTeleport()
-    
-    print("[Position Decoupler] ✅ ACTIVATED")
-    print("Client and Server positions are now DECOUPLED")
-    print("Server sees you at:", serverPosition)
-end
-
-function PositionDecoupler:Disable()
-    if not enabled then return end
-    
-    enabled = false
-    restoreHooks()
-    table.clear(characterCache)
-    
-    print("[Position Decoupler] ❌ DEACTIVATED")
-end
-
-function PositionDecoupler:SetServerPosition(position)
-    if typeof(position) == "Vector3" then
-        serverPosition = position
-        print("[Position Decoupler] Server position set to:", position)
-    end
-end
-
-function PositionDecoupler:GetServerPosition()
-    return serverPosition
-end
-
--- Авто-инициализация
+-- Автоматический запуск
 task.spawn(function()
-    task.wait(3)
-    if not enabled then
-        PositionDecoupler:Enable()
+    task.wait(3) -- Ждем загрузки скрипта :3
+    local status = AntiCheatDisabler:GetStatus()
+    
+    if status == "ANTICHEAT_ACTIVE" then
+        print("🛡️ Anti-cheat detected - Disabling...")
+        AntiCheatDisabler:AutoDisable()
+    elseif status == "ANTICHEAT_DISABLED" then
+        print("✅ Anti-cheat already disabled")
+    else
+        print("⚠️ Script ':3' not found")
     end
 end)
 
-return PositionDecoupler
+return AntiCheatDisabler

@@ -1,25 +1,25 @@
--- Society GPT Speed Limit Bypass v1.0
+-- Society GPT Conservative Speed Bypass v1.1
 local SpeedBypass = {}
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
--- Конфигурация
-local MAX_ALLOWED_DISTANCE = 15 -- Студов за 0.1 секунду
-local PACKET_INTERVAL = 0.05 -- Интервал отправки пакетов
-local POSITION_HISTORY = {} -- История позиций
+-- Конфигурация (консервативные значения)
+local MAX_ALLOWED_DISTANCE = 14 -- 14 вместо 15 для запаса
+local PACKET_INTERVAL = 0.08 -- Чаще чем 0.1s
+local SAFETY_MARGIN = 0.9 -- 90% от лимита для надежности
 
 -- Глобальные переменные
 local bypassEnabled = false
 local characterCache = {}
 local networkHooks = {}
+local positionBuffer = {}
+local lastSentPosition = nil
+local lastSentTime = 0
 
 --[[
-  СИСТЕМА ПАКЕТНОЙ ОТПРАВКИ ПОЗИЦИЙ
+  ОСНОВНОЙ ЦИКЛ ОБРАБОТКИ ДВИЖЕНИЯ
 ]]
-function setupPacketBatching()
-    local lastPacketTime = tick()
-    local lastSentPosition = nil
-    
+function setupMovementProcessor()
     local heartbeat = RunService.Heartbeat:Connect(function()
         if not bypassEnabled or not characterCache.rootPart then return end
         
@@ -27,38 +27,20 @@ function setupPacketBatching()
         local rootPart = characterCache.rootPart
         local currentPosition = rootPart.Position
         
-        -- Сохраняем историю позиций
-        table.insert(POSITION_HISTORY, {
+        -- Добавляем позицию в буфер
+        table.insert(positionBuffer, {
             position = currentPosition,
             time = currentTime
         })
         
-        -- Очищаем старую историю (старше 1 секунды)
-        for i = #POSITION_HISTORY, 1, -1 do
-            if currentTime - POSITION_HISTORY[i].time > 1 then
-                table.remove(POSITION_HISTORY, i)
-            end
+        -- Очищаем старый буфер (сохраняем только последние 0.3s)
+        while #positionBuffer > 0 and currentTime - positionBuffer[1].time > 0.3 do
+            table.remove(positionBuffer, 1)
         end
         
-        -- Отправляем пакеты с правильным интервалом
-        if currentTime - lastPacketTime >= PACKET_INTERVAL then
-            if lastSentPosition then
-                local distance = (currentPosition - lastSentPosition).Magnitude
-                local timeDiff = currentTime - lastPacketTime
-                local calculatedSpeed = distance / timeDiff
-                
-                -- Если скорость превышает лимит - отправляем промежуточные позиции
-                if calculatedSpeed > MAX_ALLOWED_DISTANCE / 0.1 then
-                    sendIntermediatePositions(lastSentPosition, currentPosition, timeDiff)
-                else
-                    sendPositionPacket(currentPosition)
-                end
-            else
-                sendPositionPacket(currentPosition)
-            end
-            
-            lastSentPosition = currentPosition
-            lastPacketTime = currentTime
+        -- Отправляем пакет если пришло время
+        if currentTime - lastSentTime >= PACKET_INTERVAL then
+            processAndSendPosition(currentPosition, currentTime)
         end
     end)
     
@@ -66,34 +48,71 @@ function setupPacketBatching()
 end
 
 --[[
+  ОБРАБОТКА И ОТПРАВКА ПОЗИЦИИ
+]]
+function processAndSendPosition(currentPos, currentTime)
+    if not lastSentPosition then
+        -- Первая отправка
+        sendNetworkPosition(currentPos)
+        lastSentPosition = currentPos
+        lastSentTime = currentTime
+        return
+    end
+    
+    local rawDistance = (currentPos - lastSentPosition).Magnitude
+    local timeDiff = currentTime - lastSentTime
+    
+    -- Рассчитываем реальную скорость
+    local actualSpeed = rawDistance / timeDiff
+    local maxAllowedSpeed = (MAX_ALLOWED_DISTANCE * SAFETY_MARGIN) / 0.1
+    
+    if actualSpeed <= maxAllowedSpeed then
+        -- Скорость в пределах - отправляем как есть
+        sendNetworkPosition(currentPos)
+        lastSentPosition = currentPos
+        lastSentTime = currentTime
+    else
+        -- Скорость превышена - отправляем промежуточные позиции
+        sendIntermediatePositions(lastSentPosition, currentPos, timeDiff)
+        lastSentPosition = currentPos
+        lastSentTime = currentTime
+    end
+end
+
+--[[
   ОТПРАВКА ПРОМЕЖУТОЧНЫХ ПОЗИЦИЙ
 ]]
 function sendIntermediatePositions(startPos, endPos, totalTime)
-    local distance = (endPos - startPos).Magnitude
-    local requiredSteps = math.ceil(distance / (MAX_ALLOWED_DISTANCE * 0.8))
+    local totalDistance = (endPos - startPos).Magnitude
+    
+    -- Рассчитываем необходимое количество шагов
+    local maxStepDistance = MAX_ALLOWED_DISTANCE * SAFETY_MARGIN
+    local requiredSteps = math.max(2, math.ceil(totalDistance / maxStepDistance))
     local stepTime = totalTime / requiredSteps
     
-    for i = 1, requiredSteps do
-        local lerpFactor = i / requiredSteps
-        local intermediatePos = startPos:Lerp(endPos, lerpFactor)
+    for step = 1, requiredSteps do
+        local progress = step / requiredSteps
+        local intermediatePos = startPos:Lerp(endPos, progress)
         
-        task.spawn(function()
-            task.wait(stepTime * (i - 1))
-            sendPositionPacket(intermediatePos)
+        -- Отправляем с задержкой для имитации реального движения
+        task.delay(stepTime * (step - 1), function()
+            if bypassEnabled then
+                sendNetworkPosition(intermediatePos)
+            end
         end)
     end
 end
 
 --[[
-  ОТПРАВКА ПАКЕТА ПОЗИЦИИ
+  ОТПРАВКА ПОЗИЦИИ В СЕТЬ
 ]]
-function sendPositionPacket(position)
-    -- Здесь перехватываем и модифицируем сетевые пакеты
-    -- В реальной реализации это будет hook на FireServer
+function sendNetworkPosition(position)
+    -- Эмулируем отправку позиции через сетевые пакеты
+    -- В реальной реализации здесь будет hook на RemoteEvents
 end
 
 --[[
-  ПЕРЕХВАТ СЕТЕВЫХ ПАКЕТОВ
+  ПЕРЕХВАТ СЕТЕВЫХ ВЫЗОВОВ
 ]]
 function hookNetworkPackets()
     local mt = getrawmetatable(game)
@@ -108,10 +127,9 @@ function hookNetworkPackets()
             local args = {...}
             local remoteName = tostring(self)
             
-            if remoteName:find("Mouse") or remoteName:find("Input") or 
-               remoteName:find("Move") or remoteName:find("Walk") then
-               
-                return simulateLegitimateMovement(oldNamecall, self, args)
+            -- Перехватываем ремоуты движения
+            if isMovementRemote(remoteName) then
+                return handleMovementPacket(oldNamecall, self, args)
             end
         end
         
@@ -123,53 +141,61 @@ function hookNetworkPackets()
 end
 
 --[[
-  СИМУЛЯЦИЯ ЛЕГИТИМНОГО ДВИЖЕНИЯ
+  ПРОВЕРКА ЯВЛЯЕТСЯ ЛИ REMOTE ДВИЖЕНИЕМ
 ]]
-function simulateLegitimateMovement(originalFunc, remote, args)
+function isMovementRemote(remoteName)
+    return remoteName:find("Mouse") or remoteName:find("Input") or 
+           remoteName:find("Move") or remoteName:find("Walk") or
+           remoteName:find("Position") or remoteName:find("Update")
+end
+
+--[[
+  ОБРАБОТКА ПАКЕТА ДВИЖЕНИЯ
+]]
+function handleMovementPacket(originalFunc, remote, args)
     if not characterCache.rootPart then 
         return originalFunc(remote, unpack(args)) 
     end
     
     local currentPos = characterCache.rootPart.Position
     local modifiedArgs = {}
+    local hasModified = false
     
     for i, arg in ipairs(args) do
         if typeof(arg) == "Vector3" then
-            -- Находим ближайшую допустимую позицию из истории
-            local legitimatePos = findLegitimatePosition(currentPos)
-            modifiedArgs[i] = legitimatePos
+            -- Заменяем на безопасную позицию
+            modifiedArgs[i] = getSafePosition(currentPos)
+            hasModified = true
         elseif typeof(arg) == "CFrame" then
-            local legitimatePos = findLegitimatePosition(currentPos)
-            modifiedArgs[i] = CFrame.new(legitimatePos)
+            modifiedArgs[i] = CFrame.new(getSafePosition(currentPos))
+            hasModified = true
         else
             modifiedArgs[i] = arg
         end
     end
     
-    return originalFunc(remote, unpack(modifiedArgs))
+    if hasModified then
+        return originalFunc(remote, unpack(modifiedArgs))
+    else
+        return originalFunc(remote, unpack(args))
+    end
 end
 
 --[[
-  ПОИСК ЛЕГИТИМНОЙ ПОЗИЦИИ
+  ПОЛУЧЕНИЕ БЕЗОПАСНОЙ ПОЗИЦИИ
 ]]
-function findLegitimatePosition(targetPos)
-    if #POSITION_HISTORY == 0 then return targetPos end
+function getSafePosition(targetPos)
+    if not lastSentPosition then return targetPos end
     
-    -- Ищем последнюю позицию в пределах лимита
-    for i = #POSITION_HISTORY, 1, -1 do
-        local historicalPos = POSITION_HISTORY[i].position
-        local distance = (targetPos - historicalPos).Magnitude
-        local timeDiff = tick() - POSITION_HISTORY[i].time
-        
-        if timeDiff <= 0.1 and distance <= MAX_ALLOWED_DISTANCE then
-            return historicalPos
-        end
+    local distance = (targetPos - lastSentPosition).Magnitude
+    
+    if distance <= MAX_ALLOWED_DISTANCE * SAFETY_MARGIN then
+        return targetPos
+    else
+        -- Возвращаем позицию в пределах лимита
+        local direction = (targetPos - lastSentPosition).Unit
+        return lastSentPosition + direction * (MAX_ALLOWED_DISTANCE * SAFETY_MARGIN)
     end
-    
-    -- Если не нашли - создаем промежуточную позицию
-    local lastValidPos = POSITION_HISTORY[#POSITION_HISTORY].position
-    local direction = (targetPos - lastValidPos).Unit
-    return lastValidPos + direction * math.min(MAX_ALLOWED_DISTANCE, (targetPos - lastValidPos).Magnitude)
 end
 
 --[[
@@ -190,18 +216,23 @@ function setupCharacterTracking()
         characterCache.rootPart = rootPart
         characterCache.character = character
         
-        -- Начальная позиция
-        table.insert(POSITION_HISTORY, {
-            position = rootPart.Position,
-            time = tick()
-        })
+        -- Сбрасываем историю при новом персонаже
+        lastSentPosition = rootPart.Position
+        lastSentTime = tick()
+        table.clear(positionBuffer)
     end
     
     if player.Character then
-        onCharacterAdded(player.Character)
+        task.spawn(onCharacterAdded, player.Character)
     end
     
     player.CharacterAdded:Connect(onCharacterAdded)
+    player.CharacterRemoving:Connect(function()
+        characterCache.rootPart = nil
+        characterCache.character = nil
+        lastSentPosition = nil
+        table.clear(positionBuffer)
+    end)
 end
 
 --[[
@@ -211,22 +242,45 @@ function SpeedBypass:Enable()
     if bypassEnabled then return end
     
     bypassEnabled = true
-    table.clear(POSITION_HISTORY)
+    table.clear(positionBuffer)
     
     setupCharacterTracking()
     task.wait(1)
     hookNetworkPackets()
-    setupPacketBatching()
+    setupMovementProcessor()
     
-    print("[Speed Bypass] ✅ Activated - Speed limit bypassed")
+    print("[Conservative Speed Bypass] ✅ Activated")
+    print("Max distance:", MAX_ALLOWED_DISTANCE)
+    print("Safety margin:", SAFETY_MARGIN * 100 .. "%")
 end
 
 function SpeedBypass:Disable()
     if not bypassEnabled then return end
     
     bypassEnabled = false
+    restoreHooks()
     
-    -- Восстанавливаем хуки
+    table.clear(positionBuffer)
+    table.clear(characterCache)
+    lastSentPosition = nil
+    
+    print("[Conservative Speed Bypass] ❌ Deactivated")
+end
+
+function SpeedBypass:SetMaxDistance(distance)
+    MAX_ALLOWED_DISTANCE = math.min(distance, 14) -- Максимум 14 для безопасности
+    print("[Speed Bypass] Max distance set to:", MAX_ALLOWED_DISTANCE)
+end
+
+function SpeedBypass:SetSafetyMargin(margin)
+    SAFETY_MARGIN = math.clamp(margin, 0.5, 0.95) -- От 50% до 95%
+    print("[Speed Bypass] Safety margin set to:", SAFETY_MARGIN * 100 .. "%")
+end
+
+--[[
+  ВОССТАНОВЛЕНИЕ ХУКОВ
+]]
+function restoreHooks()
     local mt = getrawmetatable(game)
     if networkHooks[1] then
         setreadonly(mt, false)
@@ -234,7 +288,6 @@ function SpeedBypass:Disable()
         setreadonly(mt, true)
     end
     
-    -- Отключаем connections
     for i = 2, #networkHooks do
         if networkHooks[i] then
             networkHooks[i]:Disconnect()
@@ -242,15 +295,14 @@ function SpeedBypass:Disable()
     end
     
     table.clear(networkHooks)
-    table.clear(POSITION_HISTORY)
-    table.clear(characterCache)
-    
-    print("[Speed Bypass] ❌ Deactivated")
 end
 
-function SpeedBypass:SetMaxDistance(distance)
-    MAX_ALLOWED_DISTANCE = distance
-    print("[Speed Bypass] Max distance set to:", distance)
-end
+-- Авто-инициализация
+task.spawn(function()
+    task.wait(3)
+    if not bypassEnabled then
+        SpeedBypass:Enable()
+    end
+end)
 
 return SpeedBypass

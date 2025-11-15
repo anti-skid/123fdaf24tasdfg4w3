@@ -1,205 +1,175 @@
--- Society GPT Static Position Spoofer v4.0
-local PositionSpoofer = {}
+-- Society GPT Speed Limit Bypass v1.0
+local SpeedBypass = {}
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 -- Конфигурация
-local STATIC_POSITION = Vector3.new(0, 10, 0) -- Абсолютно статичная позиция
-local MAX_ALLOWED_DISTANCE = 20 -- Максимальное расстояние от статичной позиции
+local MAX_ALLOWED_DISTANCE = 15 -- Студов за 0.1 секунду
+local PACKET_INTERVAL = 0.05 -- Интервал отправки пакетов
+local POSITION_HISTORY = {} -- История позиций
 
 -- Глобальные переменные
-local spoofEnabled = false
+local bypassEnabled = false
 local characterCache = {}
-local visualAnchor = nil
 local networkHooks = {}
-local originalFunctions = {}
 
 --[[
-  СОЗДАНИЕ СТАТИЧНОГО ВИЗУАЛЬНОГО АНКЕРА
+  СИСТЕМА ПАКЕТНОЙ ОТПРАВКИ ПОЗИЦИЙ
 ]]
-function createVisualAnchor()
-    if visualAnchor then 
-        visualAnchor:Destroy() 
-    end
-    
-    local anchor = Instance.new("Part")
-    anchor.Name = "StaticServerPosition"
-    anchor.Size = Vector3.new(4, 4, 4)
-    anchor.BrickColor = BrickColor.new("Bright green")
-    anchor.Material = Enum.Material.Neon
-    anchor.Transparency = 0.7
-    anchor.Anchored = true
-    anchor.CanCollide = false
-    anchor.CFrame = CFrame.new(STATIC_POSITION)
-    
-    -- ForceField эффект
-    local forceField = Instance.new("ForceField")
-    forceField.Visible = true
-    forceField.Parent = anchor
-    
-    -- Свечение
-    local pointLight = Instance.new("PointLight")
-    pointLight.Color = Color3.fromRGB(0, 255, 0)
-    pointLight.Brightness = 3
-    pointLight.Range = 15
-    pointLight.Parent = anchor
-    
-    -- Текст label
-    local billboard = Instance.new("BillboardGui")
-    billboard.Size = UDim2.new(0, 200, 0, 50)
-    billboard.StudsOffset = Vector3.new(0, 3, 0)
-    billboard.Adornee = anchor
-    billboard.Parent = anchor
-    
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, 0, 1, 0)
-    label.BackgroundTransparency = 1
-    label.Text = "STATIC SERVER POSITION"
-    label.TextColor3 = Color3.fromRGB(0, 255, 0)
-    label.TextScaled = true
-    label.Font = Enum.Font.GothamBold
-    label.Parent = billboard
-    
-    anchor.Parent = workspace
-    visualAnchor = anchor
-    
-    return anchor
-end
-
---[[
-  ГЛУБОКИЙ ПЕРЕХВАТ NETWORK PACKETS
-]]
-function hookNetworkPackets()
-    -- Hook __namecall для перехвата всех сетевых вызовов
-    local mt = getrawmetatable(game)
-    originalFunctions.namecall = mt.__namecall
-    
-    setreadonly(mt, false)
-    
-    mt.__namecall = newcclosure(function(self, ...)
-        local method = getnamecallmethod()
-        local args = {...}
-        
-        if spoofEnabled and method == "FireServer" then
-            local remoteName = tostring(self)
-            
-            -- Перехватываем ВСЕ ремоуты связанные с движением
-            if remoteName:find("Mouse") or remoteName:find("Input") or 
-               remoteName:find("Move") or remoteName:find("Walk") or
-               remoteName:find("Position") or remoteName:find("CFrame") then
-               
-                for i, arg in ipairs(args) do
-                    if typeof(arg) == "Vector3" then
-                        -- Полная замена на статичную позицию
-                        args[i] = STATIC_POSITION
-                    elseif typeof(arg) == "CFrame" then
-                        args[i] = CFrame.new(STATIC_POSITION)
-                    end
-                end
-            end
-        end
-        
-        return originalFunctions.namecall(self, unpack(args))
-    end)
-    
-    setreadonly(mt, true)
-end
-
---[[
-  ПЕРЕХВАТ PHYSICS И VELOCITY
-]]
-function hookPhysics()
-    if not characterCache.rootPart then return end
-    
-    -- Hook свойства Velocity чтобы избежать телепортации
-    local rootPart = characterCache.rootPart
-    local mt = getrawmetatype(rootPart)
-    originalFunctions.index = mt.__index
-    originalFunctions.newindex = mt.__newindex
-    
-    setreadonly(mt, false)
-    
-    -- Перехват чтения позиции
-    mt.__index = newcclosure(function(self, key)
-        if spoofEnabled and not checkcaller() then
-            if key == "Position" or key == "CFrame" then
-                if key == "Position" then
-                    return STATIC_POSITION
-                else
-                    return CFrame.new(STATIC_POSITION)
-                end
-            end
-        end
-        return originalFunctions.index(self, key)
-    end)
-    
-    -- Перехват записи позиции (предотвращает телепортацию)
-    mt.__newindex = newcclosure(function(self, key, value)
-        if spoofEnabled and (key == "Position" or key == "CFrame") then
-            -- Блокируем установку позиции извне
-            return
-        end
-        return originalFunctions.newindex(self, key, value)
-    end)
-    
-    setreadonly(mt, true)
-end
-
---[[
-  СИСТЕМА КОНТРОЛЯ ДВИЖЕНИЯ - ПРЕДОТВРАЩЕНИЕ КИКА
-]]
-function setupMovementControl()
-    local lastRealPosition = STATIC_POSITION
+function setupPacketBatching()
+    local lastPacketTime = tick()
+    local lastSentPosition = nil
     
     local heartbeat = RunService.Heartbeat:Connect(function()
-        if not spoofEnabled or not characterCache.rootPart then return end
+        if not bypassEnabled or not characterCache.rootPart then return end
         
+        local currentTime = tick()
         local rootPart = characterCache.rootPart
-        local currentRealPosition = rootPart.Position
+        local currentPosition = rootPart.Position
         
-        -- Проверяем расстояние от статичной позиции
-        local distanceFromStatic = (currentRealPosition - STATIC_POSITION).Magnitude
+        -- Сохраняем историю позиций
+        table.insert(POSITION_HISTORY, {
+            position = currentPosition,
+            time = currentTime
+        })
         
-        if distanceFromStatic > MAX_ALLOWED_DISTANCE then
-            -- Мягко возвращаем к статичной позиции без телепортации
-            local direction = (STATIC_POSITION - currentRealPosition).Unit
-            local moveDistance = math.min(distanceFromStatic - MAX_ALLOWED_DISTANCE, 5)
+        -- Очищаем старую историю (старше 1 секунды)
+        for i = #POSITION_HISTORY, 1, -1 do
+            if currentTime - POSITION_HISTORY[i].time > 1 then
+                table.remove(POSITION_HISTORY, i)
+            end
+        end
+        
+        -- Отправляем пакеты с правильным интервалом
+        if currentTime - lastPacketTime >= PACKET_INTERVAL then
+            if lastSentPosition then
+                local distance = (currentPosition - lastSentPosition).Magnitude
+                local timeDiff = currentTime - lastPacketTime
+                local calculatedSpeed = distance / timeDiff
+                
+                -- Если скорость превышает лимит - отправляем промежуточные позиции
+                if calculatedSpeed > MAX_ALLOWED_DISTANCE / 0.1 then
+                    sendIntermediatePositions(lastSentPosition, currentPosition, timeDiff)
+                else
+                    sendPositionPacket(currentPosition)
+                end
+            else
+                sendPositionPacket(currentPosition)
+            end
             
-            rootPart.CFrame = rootPart.CFrame + direction * moveDistance
+            lastSentPosition = currentPosition
+            lastPacketTime = currentTime
         end
-        
-        -- Периодический сброс velocity для стабильности
-        if tick() % 2 < 0.01 then
-            rootPart.Velocity = Vector3.new(0, 0, 0)
-            rootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-            rootPart.RotVelocity = Vector3.new(0, 0, 0)
-            rootPart.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-        end
-        
-        lastRealPosition = currentRealPosition
     end)
     
     table.insert(networkHooks, heartbeat)
 end
 
 --[[
-  ОБНОВЛЕНИЕ СЕРВЕРНОЙ ПОЗИЦИИ БЕЗ ТЕЛЕПОРТАЦИИ
+  ОТПРАВКА ПРОМЕЖУТОЧНЫХ ПОЗИЦИЙ
 ]]
-function updateServerPositionSmoothly()
-    if not characterCache.rootPart then return end
+function sendIntermediatePositions(startPos, endPos, totalTime)
+    local distance = (endPos - startPos).Magnitude
+    local requiredSteps = math.ceil(distance / (MAX_ALLOWED_DISTANCE * 0.8))
+    local stepTime = totalTime / requiredSteps
     
-    local rootPart = characterCache.rootPart
-    local currentPosition = rootPart.Position
+    for i = 1, requiredSteps do
+        local lerpFactor = i / requiredSteps
+        local intermediatePos = startPos:Lerp(endPos, lerpFactor)
+        
+        task.spawn(function()
+            task.wait(stepTime * (i - 1))
+            sendPositionPacket(intermediatePos)
+        end)
+    end
+end
+
+--[[
+  ОТПРАВКА ПАКЕТА ПОЗИЦИИ
+]]
+function sendPositionPacket(position)
+    -- Здесь перехватываем и модифицируем сетевые пакеты
+    -- В реальной реализации это будет hook на FireServer
+end
+
+--[[
+  ПЕРЕХВАТ СЕТЕВЫХ ПАКЕТОВ
+]]
+function hookNetworkPackets()
+    local mt = getrawmetatable(game)
+    local oldNamecall = mt.__namecall
     
-    -- Плавное "подтверждение" статичной позиции серверу
-    local tempCFrame = rootPart.CFrame
-    rootPart.CFrame = CFrame.new(STATIC_POSITION)
+    setreadonly(mt, false)
     
-    -- Микро-пауза для отправки пакета
-    task.wait(0.01)
+    mt.__namecall = newcclosure(function(self, ...)
+        local method = getnamecallmethod()
+        
+        if bypassEnabled and method == "FireServer" then
+            local args = {...}
+            local remoteName = tostring(self)
+            
+            if remoteName:find("Mouse") or remoteName:find("Input") or 
+               remoteName:find("Move") or remoteName:find("Walk") then
+               
+                return simulateLegitimateMovement(oldNamecall, self, args)
+            end
+        end
+        
+        return oldNamecall(self, ...)
+    end)
     
-    -- Возвращаем реальную позицию
-    rootPart.CFrame = tempCFrame
+    setreadonly(mt, true)
+    table.insert(networkHooks, oldNamecall)
+end
+
+--[[
+  СИМУЛЯЦИЯ ЛЕГИТИМНОГО ДВИЖЕНИЯ
+]]
+function simulateLegitimateMovement(originalFunc, remote, args)
+    if not characterCache.rootPart then 
+        return originalFunc(remote, unpack(args)) 
+    end
+    
+    local currentPos = characterCache.rootPart.Position
+    local modifiedArgs = {}
+    
+    for i, arg in ipairs(args) do
+        if typeof(arg) == "Vector3" then
+            -- Находим ближайшую допустимую позицию из истории
+            local legitimatePos = findLegitimatePosition(currentPos)
+            modifiedArgs[i] = legitimatePos
+        elseif typeof(arg) == "CFrame" then
+            local legitimatePos = findLegitimatePosition(currentPos)
+            modifiedArgs[i] = CFrame.new(legitimatePos)
+        else
+            modifiedArgs[i] = arg
+        end
+    end
+    
+    return originalFunc(remote, unpack(modifiedArgs))
+end
+
+--[[
+  ПОИСК ЛЕГИТИМНОЙ ПОЗИЦИИ
+]]
+function findLegitimatePosition(targetPos)
+    if #POSITION_HISTORY == 0 then return targetPos end
+    
+    -- Ищем последнюю позицию в пределах лимита
+    for i = #POSITION_HISTORY, 1, -1 do
+        local historicalPos = POSITION_HISTORY[i].position
+        local distance = (targetPos - historicalPos).Magnitude
+        local timeDiff = tick() - POSITION_HISTORY[i].time
+        
+        if timeDiff <= 0.1 and distance <= MAX_ALLOWED_DISTANCE then
+            return historicalPos
+        end
+    end
+    
+    -- Если не нашли - создаем промежуточную позицию
+    local lastValidPos = POSITION_HISTORY[#POSITION_HISTORY].position
+    local direction = (targetPos - lastValidPos).Unit
+    return lastValidPos + direction * math.min(MAX_ALLOWED_DISTANCE, (targetPos - lastValidPos).Magnitude)
 end
 
 --[[
@@ -209,7 +179,6 @@ function setupCharacterTracking()
     local player = Players.LocalPlayer
     
     local function onCharacterAdded(character)
-        -- Ждем появления rootPart
         local rootPart
         repeat
             rootPart = character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Torso")
@@ -221,127 +190,67 @@ function setupCharacterTracking()
         characterCache.rootPart = rootPart
         characterCache.character = character
         
-        -- Инициализируем физические хуки
-        task.wait(0.5)
-        hookPhysics()
-        
-        -- Создаем визуальный якорь
-        createVisualAnchor()
-        
-        print("[Static Spoofer] Character tracking initialized")
+        -- Начальная позиция
+        table.insert(POSITION_HISTORY, {
+            position = rootPart.Position,
+            time = tick()
+        })
     end
     
-    -- Обработчики событий
     if player.Character then
-        task.spawn(onCharacterAdded, player.Character)
+        onCharacterAdded(player.Character)
     end
     
     player.CharacterAdded:Connect(onCharacterAdded)
-    player.CharacterRemoving:Connect(function()
-        characterCache.rootPart = nil
-        characterCache.character = nil
-    end)
-end
-
---[[
-  ВОССТАНОВЛЕНИЕ ОРИГИНАЛЬНЫХ ФУНКЦИЙ
-]]
-function restoreAllHooks()
-    -- Восстанавливаем метатаблицы
-    local mt = getrawmetatable(game)
-    if originalFunctions.namecall then
-        setreadonly(mt, false)
-        mt.__namecall = originalFunctions.namecall
-        setreadonly(mt, true)
-    end
-    
-    -- Восстанавливаем физические хуки
-    if characterCache.rootPart and originalFunctions.index then
-        local rootMt = getrawmetatype(characterCache.rootPart)
-        setreadonly(rootMt, false)
-        rootMt.__index = originalFunctions.index
-        rootMt.__newindex = originalFunctions.newindex
-        setreadonly(rootMt, true)
-    end
-    
-    -- Отключаем все connections
-    for _, hook in ipairs(networkHooks) do
-        if typeof(hook) == "RBXScriptConnection" then
-            hook:Disconnect()
-        end
-    end
-    table.clear(networkHooks)
-    table.clear(originalFunctions)
 end
 
 --[[
   API УПРАВЛЕНИЯ
 ]]
-function PositionSpoofer:Enable()
-    if spoofEnabled then return end
+function SpeedBypass:Enable()
+    if bypassEnabled then return end
     
-    spoofEnabled = true
+    bypassEnabled = true
+    table.clear(POSITION_HISTORY)
     
-    -- Правильная последовательность инициализации
     setupCharacterTracking()
     task.wait(1)
     hookNetworkPackets()
-    setupMovementControl()
+    setupPacketBatching()
     
-    -- Цикл обновления серверной позиции
-    local updateLoop = RunService.Heartbeat:Connect(function()
-        if spoofEnabled then
-            updateServerPositionSmoothly()
-        end
-    end)
-    table.insert(networkHooks, updateLoop)
-    
-    print("[Static Spoofer] ✅ Activated - Static position:", STATIC_POSITION)
+    print("[Speed Bypass] ✅ Activated - Speed limit bypassed")
 end
 
-function PositionSpoofer:Disable()
-    if not spoofEnabled then return end
+function SpeedBypass:Disable()
+    if not bypassEnabled then return end
     
-    spoofEnabled = false
-    restoreAllHooks()
+    bypassEnabled = false
     
-    if visualAnchor then
-        visualAnchor:Destroy()
-        visualAnchor = nil
+    -- Восстанавливаем хуки
+    local mt = getrawmetatable(game)
+    if networkHooks[1] then
+        setreadonly(mt, false)
+        mt.__namecall = networkHooks[1]
+        setreadonly(mt, true)
     end
     
+    -- Отключаем connections
+    for i = 2, #networkHooks do
+        if networkHooks[i] then
+            networkHooks[i]:Disconnect()
+        end
+    end
+    
+    table.clear(networkHooks)
+    table.clear(POSITION_HISTORY)
     table.clear(characterCache)
-    print("[Static Spoofer] ❌ Deactivated")
-end
-
-function PositionSpoofer:SetStaticPosition(position)
-    if typeof(position) == "Vector3" then
-        STATIC_POSITION = position
-        if visualAnchor then
-            visualAnchor.CFrame = CFrame.new(position)
-        end
-        print("[Static Spoofer] Static position updated to:", position)
-    end
-end
-
-function PositionSpoofer:GetStaticPosition()
-    return STATIC_POSITION
-end
-
--- Авто-инициализация с выбором безопасной позиции
-task.spawn(function()
-    task.wait(3)
     
-    -- Выбираем безопасную стартовую позицию
-    local player = Players.LocalPlayer
-    if player and player.Character then
-        local root = player.Character:FindFirstChild("HumanoidRootPart")
-        if root then
-            STATIC_POSITION = root.Position + Vector3.new(0, 5, 0)
-        end
-    end
-    
-    PositionSpoofer:Enable()
-end)
+    print("[Speed Bypass] ❌ Deactivated")
+end
 
-return PositionSpoofer
+function SpeedBypass:SetMaxDistance(distance)
+    MAX_ALLOWED_DISTANCE = distance
+    print("[Speed Bypass] Max distance set to:", distance)
+end
+
+return SpeedBypass

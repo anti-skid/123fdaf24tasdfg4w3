@@ -1,0 +1,320 @@
+-- Society GPT Server Position Spoofer v3.1 - FIXED
+local PositionSpoofer = {}
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+-- Конфигурация
+local SPOOFED_POSITION = Vector3.new(0, 10, 0)
+local ANTI_KICK_THRESHOLD = 50
+
+-- Глобальные переменные
+local spoofEnabled = false
+local characterCache = {}
+local visualAnchor = nil
+local networkHooks = {}
+local lastServerPosition = SPOOFED_POSITION
+
+--[[
+  СОЗДАНИЕ ВИЗУАЛЬНОГО АНКЕРА
+]]
+function createVisualAnchor()
+    if visualAnchor then 
+        visualAnchor:Destroy() 
+    end
+    
+    local anchor = Instance.new("Part")
+    anchor.Name = "ServerPositionAnchor"
+    anchor.Size = Vector3.new(4, 4, 4)
+    anchor.BrickColor = BrickColor.new("Bright green")
+    anchor.Material = Enum.Material.Neon
+    anchor.Transparency = 0.7
+    anchor.Anchored = true
+    anchor.CanCollide = false
+    anchor.CFrame = CFrame.new(SPOOFED_POSITION)
+    
+    -- ForceField эффект
+    local forceField = Instance.new("ForceField")
+    forceField.Visible = true
+    forceField.Parent = anchor
+    
+    -- Свечение
+    local pointLight = Instance.new("PointLight")
+    pointLight.Color = Color3.fromRGB(0, 255, 0)
+    pointLight.Brightness = 3
+    pointLight.Range = 15
+    pointLight.Parent = anchor
+    
+    -- Текст label
+    local billboard = Instance.new("BillboardGui")
+    billboard.Size = UDim2.new(0, 200, 0, 50)
+    billboard.StudsOffset = Vector3.new(0, 3, 0)
+    billboard.Adornee = anchor
+    billboard.Parent = anchor
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Text = "SERVER POSITION"
+    label.TextColor3 = Color3.fromRGB(0, 255, 0)
+    label.TextScaled = true
+    label.Font = Enum.Font.GothamBold
+    label.Parent = billboard
+    
+    anchor.Parent = workspace
+    visualAnchor = anchor
+    
+    return anchor
+end
+
+function updateVisualAnchorPosition()
+    if visualAnchor then
+        visualAnchor.CFrame = CFrame.new(SPOOFED_POSITION)
+    end
+end
+
+--[[
+  ПЕРЕХВАТ СЕТЕВЫХ ПАКЕТОВ - УПРОЩЕННАЯ ВЕРСИЯ
+]]
+function hookNetworkPackets()
+    if not spoofEnabled then return end
+    
+    -- Сохраняем оригинальные методы
+    local oldFireServer
+    local oldInvokeServer
+    
+    -- Hook RemoteEvent.FireServer
+    oldFireServer = hookfunction(getrawmetatable(game).__namecall, newcclosure(function(self, ...)
+        if spoofEnabled and getnamecallmethod() == "FireServer" then
+            local args = {...}
+            local remoteName = tostring(self)
+            
+            -- Фильтруем ремоуты связанные с движением
+            if remoteName:find("Mouse") or remoteName:find("Input") or remoteName:find("Move") or remoteName:find("Walk") then
+                for i, arg in ipairs(args) do
+                    if typeof(arg) == "Vector3" then
+                        -- Подменяем координаты
+                        args[i] = SPOOFED_POSITION
+                    elseif typeof(arg) == "CFrame" then
+                        args[i] = CFrame.new(SPOOFED_POSITION)
+                    end
+                end
+                return oldFireServer(self, unpack(args))
+            end
+        end
+        return oldFireServer(self, ...)
+    end))
+    
+    table.insert(networkHooks, {type = "fireServer", original = oldFireServer})
+end
+
+--[[
+  ПОДМЕНА ПОЗИЦИИ В ПАМЯТИ - ИСПРАВЛЕННАЯ
+]]
+function hookMemoryPosition()
+    if not characterCache.rootPart then 
+        warn("No rootPart found for memory hook")
+        return 
+    end
+    
+    local rootPart = characterCache.rootPart
+    
+    -- Простой hook через property changed
+    local connection
+    connection = rootPart:GetPropertyChangedSignal("CFrame"):Connect(function()
+        if spoofEnabled and not checkcaller() then
+            -- Для внешних запросов возвращаем спуферную позицию
+            local realCFrame = rootPart.CFrame
+            rootPart.CFrame = CFrame.new(SPOOFED_POSITION)
+            task.wait(0.001)
+            rootPart.CFrame = realCFrame
+        end
+    end)
+    
+    table.insert(networkHooks, {type = "connection", connection = connection})
+end
+
+--[[
+  ОСНОВНОЙ ЦИКЛ ДЛЯ АНТИ-КИКА
+]]
+function startAntiKickLoop()
+    local lastCheck = tick()
+    
+    local heartbeat = RunService.Heartbeat:Connect(function()
+        if not spoofEnabled or not characterCache.rootPart then return end
+        
+        local currentTime = tick()
+        if currentTime - lastCheck > 0.5 then -- Проверка каждые 0.5 секунды
+            lastCheck = currentTime
+            
+            local realPosition = characterCache.rootPart.Position
+            local distance = (realPosition - SPOOFED_POSITION).Magnitude
+            
+            -- Если ушли слишком далеко, корректируем спуферную позицию
+            if distance > ANTI_KICK_THRESHOLD then
+                SPOOFED_POSITION = realPosition
+                updateVisualAnchorPosition()
+                lastServerPosition = SPOOFED_POSITION
+            end
+        end
+        
+        -- Периодическое "подтверждение" позиции
+        if currentTime % 1 < 0.01 then
+            local root = characterCache.rootPart
+            if root then
+                local temp = root.CFrame
+                root.CFrame = CFrame.new(SPOOFED_POSITION)
+                task.wait(0.001)
+                root.CFrame = temp
+            end
+        end
+    end)
+    
+    table.insert(networkHooks, {type = "connection", connection = heartbeat})
+end
+
+--[[
+  СИНХРОНИЗАЦИЯ ПЕРСОНАЖА - ИСПРАВЛЕННАЯ
+]]
+function setupCharacterTracking()
+    local player = Players.LocalPlayer
+    
+    local function onCharacterAdded(character)
+        -- Ждем полной загрузки персонажа
+        local rootPart
+        local attempts = 0
+        
+        while attempts < 10 do
+            rootPart = character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Torso")
+            if rootPart then break end
+            attempts += 1
+            task.wait(0.5)
+        end
+        
+        if not rootPart then
+            warn("Failed to find root part after 10 attempts")
+            return
+        end
+        
+        characterCache.rootPart = rootPart
+        characterCache.character = character
+        
+        -- Инициализируем хуки памяти
+        task.wait(0.1)
+        hookMemoryPosition()
+        
+        -- Создаем/обновляем визуальный якорь
+        if not visualAnchor then
+            createVisualAnchor()
+        else
+            updateVisualAnchorPosition()
+        end
+        
+        print("[Position Spoofer] Character tracking initialized")
+    end
+    
+    -- Обработчик добавления персонажа
+    if player.Character then
+        task.spawn(onCharacterAdded, player.Character)
+    end
+    
+    player.CharacterAdded:Connect(onCharacterAdded)
+    
+    -- Обработчик удаления персонажа
+    player.CharacterRemoving:Connect(function()
+        characterCache.rootPart = nil
+        characterCache.character = nil
+    end)
+end
+
+--[[
+  ВОССТАНОВЛЕНИЕ ОРИГИНАЛЬНЫХ ФУНКЦИЙ
+]]
+function restoreHooks()
+    for _, hookData in ipairs(networkHooks) do
+        if hookData.type == "connection" and hookData.connection then
+            hookData.connection:Disconnect()
+        elseif hookData.type == "fireServer" and hookData.original then
+            -- Восстанавливаем оригинальную функцию
+            hookfunction(getrawmetatable(game).__namecall, hookData.original)
+        end
+    end
+    table.clear(networkHooks)
+end
+
+--[[
+  API УПРАВЛЕНИЯ - ИСПРАВЛЕННОЕ
+]]
+function PositionSpoofer:Enable()
+    if spoofEnabled then 
+        warn("Position Spoofer already enabled")
+        return 
+    end
+    
+    spoofEnabled = true
+    
+    -- Инициализация в правильном порядке
+    setupCharacterTracking()
+    task.wait(1)
+    hookNetworkPackets()
+    startAntiKickLoop()
+    
+    -- Создаем визуальный якорь если не создан
+    if not visualAnchor then
+        createVisualAnchor()
+    end
+    
+    print("[Position Spoofer] ✅ Activated - Server position locked")
+end
+
+function PositionSpoofer:Disable()
+    if not spoofEnabled then return end
+    
+    spoofEnabled = false
+    
+    -- Восстанавливаем всё
+    restoreHooks()
+    
+    -- Удаляем визуальный якорь
+    if visualAnchor then
+        visualAnchor:Destroy()
+        visualAnchor = nil
+    end
+    
+    -- Очищаем кэш
+    table.clear(characterCache)
+    
+    print("[Position Spoofer] ❌ Deactivated")
+end
+
+function PositionSpoofer:SetSpoofPosition(position)
+    if typeof(position) == "Vector3" then
+        SPOOFED_POSITION = position
+        lastServerPosition = position
+        updateVisualAnchorPosition()
+        print("[Position Spoofer] Spoof position updated to:", position)
+    else
+        warn("Invalid position type. Expected Vector3")
+    end
+end
+
+function PositionSpoofer:GetSpoofPosition()
+    return SPOOFED_POSITION
+end
+
+function PositionSpoofer:GetVisualAnchor()
+    return visualAnchor
+end
+
+function PositionSpoofer:IsEnabled()
+    return spoofEnabled
+end
+
+-- Авто-инициализация
+task.spawn(function()
+    task.wait(2) -- Ждем полной загрузки игры
+    if not spoofEnabled then
+        PositionSpoofer:Enable()
+    end
+end)
+
+return PositionSpoofer

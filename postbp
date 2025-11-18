@@ -1,0 +1,175 @@
+-- ДОБАВЬТЕ ЭТОТ СКРИПТ ПОСЛЕ БАЙПАСА
+
+local Players = game:GetService("Players")
+local Player = Players.LocalPlayer
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local function fixHitPartErrors()
+    -- Фикс функции getBodyPartName
+    local originalGetBodyPartName = nil
+    
+    -- Ищем и фиксим getBodyPartName
+    if _G.getBodyPartName and type(_G.getBodyPartName) == "function" then
+        originalGetBodyPartName = _G.getBodyPartName
+    end
+    
+    -- Создаем стабильную версию функции
+    local stableGetBodyPartName = function(hitPart)
+        if not hitPart or not hitPart.Parent then
+            return "Default"
+        end
+        
+        local partNameMap = {
+            ["Head"] = "Head",
+            ["HumanoidRootPart"] = "HumanoidRootPart", 
+            ["Torso"] = "Torso",
+            ["UpperTorso"] = "Torso",
+            ["LowerTorso"] = "Torso",
+            ["LeftArm"] = "Left Arm",
+            ["LeftLeg"] = "Left Leg", 
+            ["RightArm"] = "Right Arm",
+            ["RightLeg"] = "Right Leg",
+            ["LeftLowerArm"] = "Left Arm",
+            ["RightLowerArm"] = "Right Arm",
+            ["LeftUpperArm"] = "Left Arm",
+            ["RightUpperArm"] = "Right Arm",
+            ["LeftFoot"] = "Left Leg",
+            ["RightFoot"] = "Right Leg"
+        }
+        
+        return partNameMap[hitPart.Name] or "Default"
+    end
+    
+    -- Заменяем функцию
+    _G.getBodyPartName = stableGetBodyPartName
+    if getgenv then
+        getgenv().getBodyPartName = stableGetBodyPartName
+    end
+    
+    -- Фикс для ipairs ошибок в ShopAssistant
+    local function safeIpairs(t)
+        if type(t) == "table" then
+            return ipairs(t)
+        else
+            return function() end, nil, nil
+        end
+    end
+    
+    -- Заменяем опасные ipairs вызовы
+    if hookfunction then
+        local originalIpairs = ipairs
+        hookfunction(ipairs, function(t)
+            if type(t) ~= "table" then
+                warn("[MINT CLUB] Safe ipairs: expected table, got", type(t))
+                return function() end, nil, nil
+            end
+            return originalIpairs(t)
+        end)
+    end
+    
+    -- Фикс для функции calculateClientDamage
+    if _G.calculateClientDamage then
+        local originalCalculateDamage = _G.calculateClientDamage
+        _G.calculateClientDamage = function(distance, penetrated, hitPartName)
+            if not hitPartName or hitPartName == "Default" then
+                hitPartName = "Torso" -- fallback
+            end
+            return originalCalculateDamage(distance, penetrated, hitPartName)
+        end
+    end
+    
+    -- Фикс для performShot - добавляем проверки
+    if _G.performShot then
+        local originalPerformShot = _G.performShot
+        _G.performShot = function(rayOrigin, targetPos, spreadAlreadyApplied, isManualShot, shouldStopRef)
+            -- Валидация аргументов
+            if not rayOrigin or not targetPos then
+                warn("[MINT CLUB] performShot: invalid arguments")
+                return
+            end
+            
+            -- Обеспечиваем корректный hitPartName
+            return originalPerformShot(rayOrigin, targetPos, spreadAlreadyApplied, isManualShot, shouldStopRef)
+        end
+    end
+    
+    -- Фикс для encryptArgs
+    if _G.encryptArgs then
+        local originalEncrypt = _G.encryptArgs
+        _G.encryptArgs = function(...)
+            local args = {...}
+            -- Гарантируем, что hitPartName всегда строка
+            if #args >= 3 and args[3] == nil then
+                args[3] = "Default"
+            end
+            return originalEncrypt(unpack(args))
+        end
+    end
+    
+    print("[MINT CLUB] Hit part errors fixed")
+end
+
+-- Фикс для ShopAssistant.sell
+local function fixShopAssistant()
+    local shopAssistant = ReplicatedStorage:FindFirstChild("ShopAssistant")
+    if shopAssistant then
+        local originalModule = require(shopAssistant)
+        
+        -- Создаем безопасный require
+        local safeRequire = function(module)
+            if module == shopAssistant then
+                return function(code)
+                    -- Фиксим опасные вызовы ipairs
+                    local fixedCode = code:gsub("ipairs%(", "safeIpairs(")
+                    fixedCode = fixedCode:gsub("for (%w+), (%w+) in ipairs", "for %1, %2 in safeIpairs")
+                    
+                    local func, err = loadstring(fixedCode)
+                    if func then
+                        return func()
+                    else
+                        warn("[MINT CLUB] ShopAssistant fix failed:", err)
+                        return function() end
+                    end
+                end
+            end
+            return require(module)
+        end
+        
+        require = safeRequire
+    end
+end
+
+-- Запуск фиксов
+wait(2) -- Даем время системе стабилизироваться
+
+local success1 = pcall(fixHitPartErrors)
+local success2 = pcall(fixShopAssistant)
+
+if success1 and success2 then
+    print("[MINT CLUB] All post-bypass fixes applied successfully")
+else
+    warn("[MINT CLUB] Some fixes may not have been applied")
+end
+
+-- Дополнительная защита от ошибок
+spawn(function()
+    while wait(10) do
+        pcall(function()
+            -- Постоянно проверяем целостность критических функций
+            if not _G.getBodyPartName or type(_G.getBodyPartName) ~= "function" then
+                _G.getBodyPartName = function(hitPart)
+                    return hitPart and hitPart.Name or "Default"
+                end
+            end
+            
+            -- Защита от nil в таблицах
+            if _G.DmgConfig and _G.DmgConfig.DamageTable then
+                if not _G.DmgConfig.DamageTable.Default then
+                    _G.DmgConfig.DamageTable.Default = {base = 25, multiplier = 1, armorPenetration = 0.5}
+                end
+            end
+        end)
+    end
+end)
+
+return "MINT CLUB POST-BYPASS FIXES LOADED"

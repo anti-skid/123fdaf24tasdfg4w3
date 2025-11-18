@@ -1,0 +1,2506 @@
+
+local v_u_1 = game:GetService("ReplicatedFirst")
+local v_u_2 = game:GetService("Players")
+local v3 = game:GetService("RunService")
+local v_u_4 = game:GetService("ReplicatedStorage")
+local v_u_5 = game:GetService("HttpService")
+local v_u_6 = game:GetService("TweenService")
+local v_u_7 = game:GetService("TextService")
+local v_u_8 = v_u_2.LocalPlayer
+local v_u_9 = v_u_4:FindFirstChild("Reload")
+local v10 = require(v_u_1:WaitForChild("linora"))
+require(v_u_4:WaitForChild("DmgConfig"))
+if not (v_u_8:FindFirstChild("PeekBotEnabled") or v_u_8:FindFirstChild("ManipulatorEnabled")) then
+    local v11 = Instance.new("BoolValue")
+    v11.Name = "PeekBotEnabled"
+    v11.Value = false
+    v11.Parent = v_u_8
+end
+if not (v_u_8:FindFirstChild("PeekBotKey") or v_u_8:FindFirstChild("ManipulatorKey")) then
+    local v12 = Instance.new("StringValue")
+    v12.Name = "PeekBotKey"
+    v12.Value = "E"
+    v12.Parent = v_u_8
+end
+if not (v_u_8:FindFirstChild("PeekBotMode") or v_u_8:FindFirstChild("ManipulatorMode")) then
+    local v13 = Instance.new("StringValue")
+    v13.Name = "PeekBotMode"
+    v13.Value = "On disable"
+    v13.Parent = v_u_8
+end
+if not v_u_8:FindFirstChild("PeekBotDelay") then
+    local v14 = Instance.new("NumberValue")
+    v14.Name = "PeekBotDelay"
+    v14.Value = 0
+    v14.Parent = v_u_8
+end
+local v_u_15 = v10:CreateWindow("[\240\159\141\128] mint club", Enum.KeyCode.Insert)
+local v16 = v_u_15:AddTab("Rage", "rbxassetid://10734977012")
+local v17 = v_u_15:AddTab("Visuals", "rbxassetid://10723346959")
+local v18 = v_u_15:AddTab("Misc", "rbxassetid://10723407092")
+local v19 = v_u_15:AddTab("Settings", "rbxassetid://10734950309")
+local v20 = v16:AddSubTab("General")
+local v21 = v16:AddSubTab("AntiAim")
+local v22 = v20:AddPage("left", "Main")
+local v23 = v20:AddPage("center", "Other")
+local v24 = v20:AddPage("right", "Effects")
+local v25 = v21:AddPage("left", "Yaw")
+local v26 = v21:AddPage("center", "Jitter")
+local v27 = v19:AddSubTab("Settings")
+local v28 = v27:AddPage("left", "Hotkeys")
+local v29 = v27:AddPage("right", "Config")
+v28:AddKeybind("Toggle UI", Enum.KeyCode.Insert, "Toggle", function(p_u_30)
+    -- upvalues: (copy) v_u_1, (copy) v_u_15
+    require(v_u_1:WaitForChild("linora"))
+    pcall(function()
+        -- upvalues: (ref) v_u_15, (copy) p_u_30
+        if v_u_15 and v_u_15._hotkey ~= nil then
+            v_u_15._hotkey = p_u_30
+        end
+    end)
+end)
+local v_u_31 = v_u_4:WaitForChild("Cfg"):WaitForChild("MainEvent")
+cfgSelectedName = "default"
+cfgSelectedFromList = false
+cfgTiles = {}
+function sanitizeName(p32)
+    local v33 = tostring(p32 or ""):gsub("[^%w%-%_ ]", "_"):gsub("^%s+", ""):gsub("%s+$", "")
+    return v33 == "" and "default" or v33
+end
+local function v_u_41(p34)
+    -- upvalues: (copy) v_u_8, (copy) v_u_7
+    local v_u_35 = sanitizeName(p34)
+    local v36 = v_u_35
+    if v_u_8 then
+        local v37 = v_u_8.UserId
+        if typeof(v37) == "number" then
+            local v39, v40 = pcall(function()
+                -- upvalues: (ref) v_u_7, (ref) v_u_35, (ref) v_u_8
+                local v38 = v_u_7:FilterStringAsync(v_u_35, v_u_8.UserId, Enum.TextFilterContext.PrivateChat)
+                if v38 then
+                    return v38:GetNonChatStringForBroadcastAsync()
+                else
+                    return nil
+                end
+            end)
+            if v39 and type(v40) == "string" and v40 ~= "" then
+                v36 = sanitizeName(v40)
+            end
+        end
+    end
+    return v36 == "" and "default" or v36
+end
+local v42 = Instance.new("Frame")
+v42.Name = "CfgContainer"
+v42.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+v42.BorderSizePixel = 0
+v42.Size = UDim2.new(1, 0, 0, 220)
+v42.Parent = v29.Container
+local v43 = Instance.new("UIStroke")
+v43.Thickness = 1
+v43.Color = Color3.fromRGB(55, 55, 55)
+v43.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+v43.Parent = v42
+local v44 = Instance.new("Frame")
+v44.Name = "Header"
+v44.BackgroundTransparency = 1
+v44.Size = UDim2.new(1, -20, 0, 28)
+v44.Position = UDim2.new(0, 10, 0, 10)
+v44.Parent = v42
+local v45 = Instance.new("TextLabel")
+v45.BackgroundTransparency = 1
+v45.Text = "Configs"
+v45.Font = Enum.Font.Gotham
+v45.TextSize = 14
+v45.TextColor3 = Color3.new(1, 1, 1)
+v45.Size = UDim2.new(1, 0, 1, 0)
+v45.Position = UDim2.new(0, 0, 0, 0)
+v45.TextXAlignment = Enum.TextXAlignment.Left
+v45.Parent = v44
+local v46 = Instance.new("Frame")
+v46.BackgroundColor3 = Color3.fromRGB(160, 160, 160)
+v46.BorderSizePixel = 0
+v46.Size = UDim2.new(1, -20, 0, 1)
+v46.Position = UDim2.new(0, 10, 0, 42)
+v46.Parent = v42
+local v_u_47 = Instance.new("ScrollingFrame")
+v_u_47.Name = "List"
+v_u_47.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
+v_u_47.BorderSizePixel = 0
+v_u_47.Size = UDim2.new(1, -20, 1, -64)
+v_u_47.Position = UDim2.new(0, 10, 0, 50)
+v_u_47.CanvasSize = UDim2.new(0, 0, 0, 0)
+v_u_47.AutomaticCanvasSize = Enum.AutomaticSize.Y
+v_u_47.ScrollBarThickness = 4
+v_u_47.Parent = v42
+local v48 = Instance.new("UIStroke")
+v48.Thickness = 1
+v48.Color = Color3.fromRGB(60, 60, 60)
+v48.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+v48.Parent = v_u_47
+local v49 = Instance.new("UIListLayout")
+v49.Padding = UDim.new(0, 6)
+v49.SortOrder = Enum.SortOrder.LayoutOrder
+v49.Parent = v_u_47
+local v_u_50 = v_u_15:CreateTextBox(v42, {
+    ["name"] = "CfgName",
+    ["text"] = cfgSelectedName,
+    ["placeholder"] = "Config name",
+    ["size"] = UDim2.new(0.4, -10, 0, 28),
+    ["position"] = UDim2.new(0, 10, 0, 10),
+    ["maxTextSize"] = 16
+})
+local v51 = Instance.new("TextLabel")
+v51.BackgroundTransparency = 1
+v51.Text = "Cfgs"
+v51.Font = Enum.Font.Gotham
+v51.TextSize = 14
+v51.TextColor3 = Color3.new(1, 1, 1)
+v51.TextXAlignment = Enum.TextXAlignment.Left
+v51.Size = UDim2.new(0, 80, 0, 28)
+v51.Position = UDim2.new(0.4, 5, 0, 10)
+v51.Parent = v42
+function selectTile(p52, p53)
+    -- upvalues: (copy) v_u_50
+    cfgSelectedName = p53
+    cfgSelectedFromList = true
+    v_u_50.Text = p53
+    for _, v54 in ipairs(cfgTiles) do
+        if v54 and v54.button then
+            v54.button.BackgroundColor3 = v54 == p52 and Color3.fromRGB(35, 35, 35) or Color3.fromRGB(25, 25, 25)
+        end
+    end
+end
+function rebuildCfgList(p55)
+    -- upvalues: (copy) v_u_47
+    for _, v56 in ipairs(cfgTiles) do
+        if v56 and v56.button then
+            v56.button:Destroy()
+        end
+    end
+    cfgTiles = {}
+    local v57 = false
+    for _, v_u_58 in ipairs(p55 or {}) do
+        local v59 = Instance.new("TextButton")
+        v59.AutoButtonColor = true
+        v59.Text = v_u_58
+        v59.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+        v59.BorderSizePixel = 0
+        v59.TextColor3 = Color3.new(1, 1, 1)
+        v59.Font = Enum.Font.Gotham
+        v59.TextSize = 14
+        v59.Size = UDim2.new(1, 0, 0, 24)
+        v59.Parent = v_u_47
+        local v60 = Instance.new("UIStroke")
+        v60.Thickness = 1
+        v60.Color = Color3.fromRGB(55, 55, 55)
+        v60.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+        v60.Parent = v59
+        local v_u_61 = {
+            ["button"] = v59,
+            ["name"] = v_u_58
+        }
+        local v62 = cfgTiles
+        table.insert(v62, v_u_61)
+        v59.Activated:Connect(function()
+            -- upvalues: (copy) v_u_61, (copy) v_u_58
+            selectTile(v_u_61, v_u_58)
+        end)
+        if v_u_58 == cfgSelectedName then
+            selectTile(v_u_61, v_u_58)
+            v57 = true
+        end
+    end
+    if not v57 and #cfgTiles > 0 then
+        selectTile(cfgTiles[1], cfgTiles[1].name)
+    end
+end
+function requestList()
+    -- upvalues: (copy) v_u_31
+    v_u_31:FireServer({
+        ["action"] = "list"
+    })
+end
+function saveConfig()
+    -- upvalues: (copy) v_u_15, (copy) v_u_5, (copy) v_u_41, (copy) v_u_50, (copy) v_u_31
+    local v63, v_u_64 = pcall(function()
+        -- upvalues: (ref) v_u_15
+        return v_u_15:ExportConfig()
+    end)
+    if v63 and type(v_u_64) == "table" then
+        local v65, v66 = pcall(function()
+            -- upvalues: (ref) v_u_5, (copy) v_u_64
+            return v_u_5:JSONEncode(v_u_64)
+        end)
+        if v65 then
+            local v67
+            if cfgSelectedFromList then
+                v67 = sanitizeName(cfgSelectedName)
+            else
+                v67 = v_u_41(cfgSelectedName)
+            end
+            cfgSelectedName = v67
+            v_u_50.Text = v67
+            cfgSelectedFromList = false
+            v_u_31:FireServer({
+                ["action"] = "save",
+                ["name"] = v67,
+                ["data"] = v66
+            })
+            task.delay(0.1, requestList)
+        end
+    else
+        return
+    end
+end
+function loadConfig()
+    -- upvalues: (copy) v_u_31, (copy) v_u_41
+    local v68 = v_u_31
+    local v69 = {
+        ["action"] = "load"
+    }
+    local v70
+    if cfgSelectedFromList then
+        v70 = sanitizeName(cfgSelectedName)
+    else
+        v70 = v_u_41(cfgSelectedName)
+    end
+    v69.name = v70
+    v68:FireServer(v69)
+end
+v_u_31.OnClientEvent:Connect(function(p_u_71)
+    -- upvalues: (copy) v_u_5, (copy) v_u_15
+    if type(p_u_71) ~= "table" then
+        return
+    end
+    if p_u_71.action == "load" then
+        local v72 = p_u_71.data
+        if type(v72) == "string" and #p_u_71.data > 0 then
+            local v73, v_u_74 = pcall(function()
+                -- upvalues: (ref) v_u_5, (copy) p_u_71
+                return v_u_5:JSONDecode(p_u_71.data)
+            end)
+            if v73 and type(v_u_74) == "table" then
+                pcall(function()
+                    -- upvalues: (ref) v_u_15, (copy) v_u_74
+                    v_u_15:LoadConfig(v_u_74)
+                end)
+                return
+            end
+            ::l8::
+            return
+        end
+    end
+    if p_u_71.action == "list" then
+        local v75 = p_u_71.items
+        if type(v75) == "table" then
+            rebuildCfgList(p_u_71.items)
+        end
+    end
+    goto l8
+end)
+v_u_50.FocusLost:Connect(function()
+    -- upvalues: (copy) v_u_41, (copy) v_u_50
+    local v76 = v_u_41(v_u_50.Text or "")
+    cfgSelectedName = v76
+    v_u_50.Text = v76
+    cfgSelectedFromList = false
+end)
+requestList()
+local v77 = v18:AddSubTab("Misc")
+local v78 = v77:AddPage("left", "Misc")
+local v79 = v77:AddPage("right", "View Model")
+local v80 = v_u_8:FindFirstChild("Viewmodel")
+if not v80 then
+    v80 = Instance.new("Folder")
+    v80.Name = "Viewmodel"
+    v80.Parent = v_u_8
+end
+local v_u_81 = v80:FindFirstChild("ThirdP")
+if not v_u_81 then
+    v_u_81 = Instance.new("BoolValue")
+    v_u_81.Name = "ThirdP"
+    v_u_81.Value = false
+    v_u_81.Parent = v80
+end
+local v_u_82 = v80:FindFirstChild("x")
+if not v_u_82 then
+    v_u_82 = Instance.new("NumberValue")
+    v_u_82.Name = "x"
+    v_u_82.Value = 0
+    v_u_82.Parent = v80
+end
+local v_u_83 = v80:FindFirstChild("y")
+if not v_u_83 then
+    v_u_83 = Instance.new("NumberValue")
+    v_u_83.Name = "y"
+    v_u_83.Value = 0
+    v_u_83.Parent = v80
+end
+local v_u_84 = v80:FindFirstChild("z")
+if not v_u_84 then
+    v_u_84 = Instance.new("NumberValue")
+    v_u_84.Name = "z"
+    v_u_84.Value = 0
+    v_u_84.Parent = v80
+end
+v79:AddToggle("In Third Person", v_u_81.Value, function(p85)
+    -- upvalues: (ref) v_u_81
+    v_u_81.Value = p85 and true or false
+end)
+v79:AddSlider("Offset X", v_u_82.Value, -10, 10, 0.01, function(p86)
+    -- upvalues: (ref) v_u_82
+    local v87 = v_u_82
+    local v88 = (tonumber(p86) or 0) * 100
+    v87.Value = math.floor(v88) / 100
+end)
+v79:AddSlider("Offset Y", v_u_83.Value, -10, 10, 0.01, function(p89)
+    -- upvalues: (ref) v_u_83
+    local v90 = v_u_83
+    local v91 = (tonumber(p89) or 0) * 100
+    v90.Value = math.floor(v91) / 100
+end)
+v79:AddSlider("Offset Z", v_u_84.Value, -10, 10, 0.01, function(p92)
+    -- upvalues: (ref) v_u_84
+    local v93 = v_u_84
+    local v94 = (tonumber(p92) or 0) * 100
+    v93.Value = math.floor(v94) / 100
+end)
+local v_u_95 = v_u_8:FindFirstChild("HItlogs")
+if not v_u_95 then
+    v_u_95 = Instance.new("BoolValue")
+    v_u_95.Name = "HItlogs"
+    v_u_95.Value = false
+    v_u_95.Parent = v_u_8
+end
+v78:AddToggle("Hit logs", v_u_95.Value, function(p96)
+    -- upvalues: (ref) v_u_95
+    v_u_95.Value = p96 and true or false
+end)
+local v_u_97 = false
+local v_u_98 = v_u_4:WaitForChild("Something"):WaitForChild("CamClip")
+v78:AddToggle("Camera Clip", false, function(p99)
+    -- upvalues: (ref) v_u_97, (copy) v_u_98
+    v_u_97 = p99
+    v_u_98:FireServer(v_u_97)
+end)
+v78:AddToggle("Quick Stop", false, function(p100)
+    game.Players.LocalPlayer:WaitForChild("QuickStop").Value = p100
+end)
+local v_u_101 = false
+v78:AddToggle("Debug Raycast", false, function(p102)
+    -- upvalues: (ref) v_u_101, (copy) v_u_8
+    v_u_101 = p102
+    local v103 = v_u_8:FindFirstChild("RaycastDebug")
+    if v_u_101 then
+        if not v103 then
+            v103 = Instance.new("BoolValue")
+            v103.Name = "RaycastDebug"
+            v103.Parent = v_u_8
+        end
+        v103.Value = true
+    elseif v103 then
+        v103:Destroy()
+    end
+end)
+local v_u_104 = false
+v78:AddToggle("Spread Debug", false, function(p105)
+    -- upvalues: (ref) v_u_104, (copy) v_u_8
+    v_u_104 = p105
+    local v106 = v_u_8:FindFirstChild("SpreadDebug")
+    if v_u_104 then
+        if not v106 then
+            v106 = Instance.new("BoolValue")
+            v106.Name = "SpreadDebug"
+            v106.Parent = v_u_8
+        end
+        v106.Value = true
+    elseif v106 then
+        v106:Destroy()
+    end
+end)
+local v_u_107 = v_u_8:FindFirstChild("Killfeed")
+if not v_u_107 then
+    v_u_107 = Instance.new("BoolValue")
+    v_u_107.Name = "Killfeed"
+    v_u_107.Value = true
+    v_u_107.Parent = v_u_8
+end
+local v_u_108 = v_u_8:FindFirstChild("PreserveKillFeed")
+if not v_u_108 then
+    v_u_108 = Instance.new("BoolValue")
+    v_u_108.Name = "PreserveKillFeed"
+    v_u_108.Value = false
+    v_u_108.Parent = v_u_8
+end
+local v_u_109 = v_u_8:FindFirstChild("KillfeedX")
+if not v_u_109 then
+    v_u_109 = Instance.new("IntValue")
+    v_u_109.Name = "KillfeedX"
+    v_u_109.Value = 0
+    v_u_109.Parent = v_u_8
+end
+local v_u_110 = v_u_8:FindFirstChild("KillfeedY")
+if not v_u_110 then
+    v_u_110 = Instance.new("IntValue")
+    v_u_110.Name = "KillfeedY"
+    v_u_110.Value = 0
+    v_u_110.Parent = v_u_8
+end
+v78:AddToggle("Killfeed", v_u_107.Value, function(p111)
+    -- upvalues: (ref) v_u_107
+    v_u_107.Value = p111 and true or false
+end)
+v78:AddToggle("Preserve Killfeed", v_u_108.Value, function(p112)
+    -- upvalues: (ref) v_u_108
+    v_u_108.Value = p112 and true or false
+end)
+v78:AddSlider("Killfeed X", v_u_109.Value, -1500, 1500, 1, function(p113)
+    -- upvalues: (ref) v_u_109
+    local v114 = v_u_109
+    local v115 = tonumber(p113) or 0
+    v114.Value = math.floor(v115)
+end)
+v78:AddSlider("Killfeed Y", v_u_110.Value, -1500, 1500, 1, function(p116)
+    -- upvalues: (ref) v_u_110
+    local v117 = v_u_110
+    local v118 = tonumber(p116) or 0
+    v117.Value = math.floor(v118)
+end)
+local v119 = v17:AddSubTab("ESP")
+local v120 = v17:AddSubTab("Self visuals")
+local v121 = v119:AddPage("left", "ESP")
+local v122 = v119:AddPage("center", "Chams")
+local v123 = v120:AddPage("left", "Self visuals")
+local v124 = v120:AddPage("center", "Character")
+local v_u_125 = v17:AddSubTab("World")
+local v126 = v_u_125:AddPage("left", "World")
+local v127 = v_u_125:AddPage("right", "Lighting")
+local v_u_128 = 70
+local v_u_129 = workspace.CurrentCamera and workspace.CurrentCamera
+if v_u_129 then
+    v_u_129.FieldOfView = v_u_128
+    local v_u_130 = false
+    v_u_129:GetPropertyChangedSignal("FieldOfView"):Connect(function()
+        -- upvalues: (ref) v_u_130, (copy) v_u_129, (ref) v_u_128
+        if not v_u_130 then
+            local v131 = v_u_129.FieldOfView - v_u_128
+            if math.abs(v131) > 0.001 then
+                v_u_130 = true
+                v_u_129.FieldOfView = v_u_128
+                v_u_130 = false
+            end
+        end
+    end)
+end
+workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+    -- upvalues: (ref) v_u_128
+    local v_u_132 = workspace.CurrentCamera
+    if v_u_132 then
+        if not v_u_132 then
+            return
+        end
+        v_u_132.FieldOfView = v_u_128
+        local v_u_133 = false
+        v_u_132:GetPropertyChangedSignal("FieldOfView"):Connect(function()
+            -- upvalues: (ref) v_u_133, (copy) v_u_132, (ref) v_u_128
+            if not v_u_133 then
+                local v134 = v_u_132.FieldOfView - v_u_128
+                if math.abs(v134) > 0.001 then
+                    v_u_133 = true
+                    v_u_132.FieldOfView = v_u_128
+                    v_u_133 = false
+                end
+            end
+        end)
+    end
+end)
+v126:AddSlider("Field Of View", 70, 50, 120, 1, function(p135)
+    -- upvalues: (ref) v_u_128
+    v_u_128 = tonumber(p135) or 70
+    local v136 = workspace.CurrentCamera
+    if v136 then
+        local v137 = v136.FieldOfView - v_u_128
+        if math.abs(v137) > 0.001 then
+            v136.FieldOfView = v_u_128
+        end
+    end
+end)
+v127:AddSlider("Time", 12, 0, 24, 1, function(p138)
+    game.Lighting.TimeOfDay = tostring(p138)
+end)
+local function v_u_144(p139)
+    local v140 = game.Lighting
+    local v141 = v140:FindFirstChild("Skys")
+    for _, v142 in ipairs(v140:GetChildren()) do
+        if v142:IsA("Sky") then
+            v142:Destroy()
+        end
+    end
+    local v143 = v141 and v141:FindFirstChild(p139)
+    if v143 then
+        v143:Clone().Parent = v140
+    end
+end
+v127:AddDropdown("Custom Sky", {
+    "Default",
+    "Classic",
+    "Purple Space",
+    "Night Cloudy",
+    "Night Blue",
+    "Anime",
+    "Sunset",
+    "Starry Night"
+}, "Default", function(p145)
+    -- upvalues: (copy) v_u_144
+    v_u_144(p145)
+end)
+local v192, v193 = pcall(function()
+    -- upvalues: (copy) v_u_125
+    local v146 = v_u_125:AddPage("center", "Skybox Rotation")
+    local v147 = v_u_125:AddPage("center", "Skybox Rotate")
+    local v_u_148 = game:GetService("Lighting")
+    local v_u_149 = 0
+    local v_u_150 = 0
+    local v_u_151 = 0
+    local v_u_152 = false
+    local v_u_153 = true
+    local v_u_154 = true
+    local v_u_155 = false
+    local v_u_156 = 1
+    local function v_u_162()
+        -- upvalues: (copy) v_u_148
+        local v157 = {}
+        local v158 = {}
+        for _, v159 in ipairs(v_u_148:GetChildren()) do
+            if v159:IsA("Sky") and not v157[v159] then
+                table.insert(v158, v159)
+                v157[v159] = true
+            end
+        end
+        local v160 = v_u_148:FindFirstChild("Skys")
+        if v160 then
+            for _, v161 in ipairs(v160:GetChildren()) do
+                if v161:IsA("Sky") and not v157[v161] then
+                    table.insert(v158, v161)
+                    v157[v161] = true
+                end
+            end
+        end
+        return v158
+    end
+    local function v_u_173(p163)
+        -- upvalues: (copy) v_u_162, (ref) v_u_153, (ref) v_u_154, (ref) v_u_155, (ref) v_u_149, (ref) v_u_150, (ref) v_u_151
+        local v164 = v_u_162()
+        if #v164 ~= 0 then
+            local v165 = p163 and v_u_153 and (p163.X or 0) or 0
+            local v166 = p163 and v_u_154 and (p163.Y or 0) or 0
+            local v167 = p163 and (v_u_155 and p163.Z or 0) or 0
+            local v168 = v_u_149 + v165
+            local v169 = v_u_150 + v166
+            local v170 = v_u_151 + v167
+            local v_u_171 = Vector3.new(v168, v169, v170)
+            for _, v_u_172 in ipairs(v164) do
+                pcall(function()
+                    -- upvalues: (copy) v_u_172, (copy) v_u_171
+                    v_u_172.SkyboxOrientation = v_u_171
+                end)
+            end
+        end
+    end
+    v146:AddSlider("Rotate X", 0, -180, 180, 1, function(p174)
+        -- upvalues: (ref) v_u_149, (copy) v_u_173
+        v_u_149 = tonumber(p174) or 0
+        v_u_173(nil)
+    end)
+    v146:AddSlider("Rotate Y", 0, -180, 180, 1, function(p175)
+        -- upvalues: (ref) v_u_150, (copy) v_u_173
+        v_u_150 = tonumber(p175) or 0
+        v_u_173(nil)
+    end)
+    v146:AddSlider("Rotate Z", 0, -180, 180, 1, function(p176)
+        -- upvalues: (ref) v_u_151, (copy) v_u_173
+        v_u_151 = tonumber(p176) or 0
+        v_u_173(nil)
+    end)
+    local v_u_177 = game:GetService("RunService")
+    local v_u_178 = Vector3.new(0, 0, 0)
+    local v_u_179 = nil
+    v147:AddToggle("Skybox rotation", false, function(p180)
+        -- upvalues: (ref) v_u_152, (ref) v_u_179, (copy) v_u_177, (ref) v_u_153, (ref) v_u_156, (ref) v_u_154, (ref) v_u_155, (ref) v_u_178, (copy) v_u_173
+        v_u_152 = p180
+        if v_u_152 then
+            if not (v_u_179 and v_u_179.Connected) then
+                v_u_179 = v_u_177.Heartbeat:Connect(function(p181)
+                    -- upvalues: (ref) v_u_152, (ref) v_u_153, (ref) v_u_156, (ref) v_u_154, (ref) v_u_155, (ref) v_u_178, (ref) v_u_173
+                    if v_u_152 then
+                        local v182 = v_u_154 and v_u_156 or 0
+                        local v183 = v_u_155 and v_u_156 or 0
+                        local v184 = v_u_178
+                        local v185 = (v_u_153 and v_u_156 or 0) * p181 * 60
+                        local v186 = v182 * p181 * 60
+                        local v187 = v183 * p181 * 60
+                        v_u_178 = v184 + Vector3.new(v185, v186, v187)
+                        v_u_173(v_u_178)
+                    end
+                end)
+            end
+        else
+            if v_u_179 and v_u_179.Connected then
+                v_u_179:Disconnect()
+            end
+            v_u_179 = nil
+            v_u_178 = Vector3.new(0, 0, 0)
+            v_u_173(nil)
+            return
+        end
+    end)
+    v147:AddToggle("Axis X", true, function(p188)
+        -- upvalues: (ref) v_u_153
+        v_u_153 = p188
+    end)
+    v147:AddToggle("Axis Y", true, function(p189)
+        -- upvalues: (ref) v_u_154
+        v_u_154 = p189
+    end)
+    v147:AddToggle("Axis Z", false, function(p190)
+        -- upvalues: (ref) v_u_155
+        v_u_155 = p190
+    end)
+    v147:AddSlider("Rotation speed", 1, -5, 5, 0.01, function(p191)
+        -- upvalues: (ref) v_u_156
+        v_u_156 = tonumber(p191) or 1
+    end)
+end)
+if not v192 then
+    warn("Skybox subtab init failed:", v193)
+end
+v127:AddSlider("Brightness", 3, -1, 5, 0.1, function(p194)
+    game.Lighting.Brightness = tonumber(p194) or 3
+end)
+local v195 = game:GetService("Lighting")
+local v_u_196 = v195:FindFirstChildOfClass("ColorCorrectionEffect")
+if not v_u_196 then
+    v_u_196 = Instance.new("ColorCorrectionEffect")
+    v_u_196.Name = "UI_ColorCorrection"
+    v_u_196.Parent = v195
+end
+v127:AddSlider("Contrast", 0, -1, 1, 0.01, function(p197)
+    -- upvalues: (ref) v_u_196
+    v_u_196.Contrast = tonumber(p197) or 0
+end)
+v127:AddSlider("Saturation", 0, -1, 1, 0.01, function(p198)
+    -- upvalues: (ref) v_u_196
+    v_u_196.Saturation = tonumber(p198) or 0
+end)
+local function v_u_201(p199)
+    for _, v200 in ipairs(workspace:GetDescendants()) do
+        if v200:IsA("BasePart") and not v200.Parent:FindFirstChildOfClass("Humanoid") then
+            v200.Reflectance = p199
+        end
+    end
+end
+v126:AddSlider("Map Reflectance", 0, 0, 1, 0.1, function(p202)
+    -- upvalues: (copy) v_u_201
+    v_u_201(tonumber(p202) or 0)
+end)
+local v_u_203 = false
+local v_u_204 = nil
+v126:AddToggle("ForceField Walls", false, function(p205)
+    -- upvalues: (ref) v_u_203, (ref) v_u_204
+    v_u_203 = p205
+    local v206 = game.Workspace:FindFirstChild("FFA")
+    if v206 then
+        for _, v207 in ipairs(v206:GetDescendants()) do
+            if v207:IsA("BasePart") and v207.Name == "Wall" then
+                if v_u_203 then
+                    v207.Material = Enum.Material.ForceField
+                else
+                    v207.Material = Enum.Material.Plastic
+                end
+            end
+        end
+        if v_u_203 then
+            if v_u_204 then
+                v_u_204:Disconnect()
+                v_u_204 = nil
+            end
+            v_u_204 = v206.DescendantAdded:Connect(function(p208)
+                if p208:IsA("BasePart") and p208.Name == "Wall" then
+                    p208.Material = Enum.Material.ForceField
+                end
+            end)
+            return
+        end
+        if v_u_204 then
+            v_u_204:Disconnect()
+            v_u_204 = nil
+        end
+    end
+end)
+local v_u_209 = false
+local v_u_210 = nil
+v126:AddToggle("ForceField Penetrables", false, function(p211)
+    -- upvalues: (ref) v_u_209, (ref) v_u_210
+    v_u_209 = p211
+    local v212 = game.Workspace:FindFirstChild("FFA")
+    if v212 then
+        for _, v213 in ipairs(v212:GetDescendants()) do
+            if v213:IsA("BasePart") and v213.Name == "Penetrable" then
+                if v_u_209 then
+                    v213.Material = Enum.Material.ForceField
+                else
+                    v213.Material = Enum.Material.WoodPlanks
+                end
+            end
+        end
+        if v_u_209 then
+            if v_u_210 then
+                v_u_210:Disconnect()
+                v_u_210 = nil
+            end
+            v_u_210 = v212.DescendantAdded:Connect(function(p214)
+                if p214:IsA("BasePart") and p214.Name == "Penetrable" then
+                    p214.Material = Enum.Material.ForceField
+                end
+            end)
+            return
+        end
+        if v_u_210 then
+            v_u_210:Disconnect()
+            v_u_210 = nil
+        end
+    end
+end)
+local v_u_215 = false
+local v_u_216 = workspace:FindFirstChild("tmp_clones")
+local function v_u_219()
+    -- upvalues: (copy) v_u_216, (copy) v_u_8, (ref) v_u_215
+    if v_u_216 then
+        local v217 = v_u_216:FindFirstChild(v_u_8.Name)
+        if v217 then
+            for _, v218 in ipairs(v217:GetChildren()) do
+                if v218:IsA("Part") then
+                    if v_u_215 then
+                        if v218.Name == "Head" then
+                            v218.Transparency = 0.7
+                        else
+                            v218.Transparency = 0.9
+                        end
+                    else
+                        v218.Transparency = 1
+                    end
+                end
+            end
+        end
+    else
+        return
+    end
+end
+v_u_219()
+v124:AddToggle("Self ESP", false, function(p220)
+    SELF_ESP_Enabled = p220
+    if not SELF_ESP_Enabled then
+        clearSelfESP()
+    end
+    updateESP()
+    updateChams()
+end)
+v124:AddToggle("Server Pos Visualization", false, function(p221)
+    -- upvalues: (ref) v_u_215, (copy) v_u_219
+    v_u_215 = p221
+    v_u_219()
+end)
+v22:AddToggle("Rage Aim", false, function(p222)
+    rageAimEnabled = p222
+    ensureCharacterValues()
+end)
+v22:AddDropdown("Aim mode", { "Closest to plr", "Closest to cursor" }, "Closest to plr", function(p223)
+    -- upvalues: (copy) v_u_8
+    aimMode = string.lower(p223) == "closest to cursor" and "closest to cursor" or "closest to plr"
+    if v_u_8.Character then
+        local v224 = v_u_8.Character:FindFirstChild("aimMode")
+        if not v224 then
+            v224 = Instance.new("StringValue")
+            v224.Name = "aimMode"
+            v224.Parent = v_u_8.Character
+        end
+        v224.Value = aimMode
+    end
+end)
+local v_u_225 = "Head"
+local v_u_226 = "Closest"
+local function v_u_229()
+    -- upvalues: (copy) v_u_8, (ref) v_u_225, (ref) v_u_226
+    local v227 = v_u_8:FindFirstChild("hitpart")
+    if not v227 then
+        v227 = Instance.new("StringValue")
+        v227.Name = "hitpart"
+        v227.Parent = v_u_8
+    end
+    v227.Value = v_u_225
+    v_u_226 = "Closest"
+    local v228 = v_u_8:FindFirstChild("hitpartMode")
+    if not v228 then
+        v228 = Instance.new("StringValue")
+        v228.Name = "hitpartMode"
+        v228.Parent = v_u_8
+    end
+    v228.Value = v_u_226
+end
+v22:AddDropdown("Hitpart", {
+    "Head",
+    "Torso",
+    "Left Arm",
+    "Right Arm",
+    "Left Leg",
+    "Right Leg",
+    "Closest part"
+}, "Head", function(p230)
+    -- upvalues: (ref) v_u_225, (copy) v_u_229
+    v_u_225 = p230
+    v_u_229()
+end)
+local v_u_231 = v_u_8:FindFirstChild("Hitchance")
+if not v_u_231 then
+    v_u_231 = Instance.new("IntValue")
+    v_u_231.Name = "Hitchance"
+    v_u_231.Value = 50
+    v_u_231.Parent = v_u_8
+end
+v22:AddSlider("Hitchance", v_u_231.Value, 0, 100, 1, function(p232)
+    -- upvalues: (ref) v_u_231
+    local v233 = v_u_231
+    local v234 = tonumber(p232) or 50
+    v233.Value = math.floor(v234)
+end)
+v22:AddToggle("Autoshoot", false, function(p235)
+    autoShootEnabled = p235
+    ensureCharacterValues()
+end)
+local v_u_236 = v_u_8:FindFirstChild("MindmgBool")
+if not v_u_236 then
+    v_u_236 = Instance.new("BoolValue")
+    v_u_236.Name = "MindmgBool"
+    v_u_236.Value = false
+    v_u_236.Parent = v_u_8
+end
+local v_u_237 = v_u_8:FindFirstChild("Mindmg")
+if not v_u_237 then
+    v_u_237 = Instance.new("IntValue")
+    v_u_237.Name = "Mindmg"
+    v_u_237.Value = 0
+    v_u_237.Parent = v_u_8
+end
+v22:AddToggle("Mindmg", v_u_236.Value, function(p238)
+    -- upvalues: (ref) v_u_236
+    v_u_236.Value = p238
+end)
+v22:AddSlider("Mindmg", v_u_237.Value, 0, 100, 1, function(p239)
+    -- upvalues: (ref) v_u_237
+    local v240 = v_u_237
+    local v241 = tonumber(p239) or 0
+    v240.Value = math.floor(v241)
+end)
+mindmgOverrideBool = v_u_8:FindFirstChild("mindmgoverride")
+if not mindmgOverrideBool then
+    mindmgOverrideBool = Instance.new("BoolValue")
+    mindmgOverrideBool.Name = "mindmgoverride"
+    mindmgOverrideBool.Value = false
+    mindmgOverrideBool.Parent = v_u_8
+end
+mindmgOverrideValue = v_u_8:FindFirstChild("mindmgoverridevalue")
+if not mindmgOverrideValue then
+    mindmgOverrideValue = Instance.new("IntValue")
+    mindmgOverrideValue.Name = "mindmgoverridevalue"
+    mindmgOverrideValue.Value = 50
+    mindmgOverrideValue.Parent = v_u_8
+end
+v22:AddSlider("MinDmg Override", mindmgOverrideValue.Value, 0, 100, 1, function(p242)
+    local v243 = mindmgOverrideValue
+    local v244 = tonumber(p242) or 0
+    v243.Value = math.floor(v244)
+end)
+v22:AddKeybind("MinDmg Override Key", Enum.KeyCode.C, "Toggle", function(_, p245, p246)
+    -- upvalues: (copy) v_u_8
+    local v247 = v_u_8:FindFirstChild("MindmgBool")
+    if v247 and v247.Value then
+        if p245 == "Hold" then
+            if p246 == "press" then
+                mindmgOverrideBool.Value = true
+                return
+            end
+            if p246 == "release" then
+                mindmgOverrideBool.Value = false
+                return
+            end
+        else
+            mindmgOverrideBool.Value = not mindmgOverrideBool.Value
+        end
+    end
+end)
+local v_u_248 = v_u_8:FindFirstChild("PeekBotEnabled") or v_u_8:FindFirstChild("ManipulatorEnabled")
+if not v_u_8:FindFirstChild("PeekBotKey") then
+    v_u_8:FindFirstChild("ManipulatorKey")
+end
+local v_u_249 = v_u_8:FindFirstChild("PeekBotMode") or v_u_8:FindFirstChild("ManipulatorMode")
+local v250 = "Peek Assist"
+local v251
+if v_u_248 then
+    v251 = v_u_248.Value or false
+else
+    v251 = false
+end
+v22:AddToggle(v250, v251, function(p252)
+    -- upvalues: (copy) v_u_248
+    if v_u_248 then
+        v_u_248.Value = p252 and true or false
+    end
+end)
+local v_u_253 = v_u_8:FindFirstChild("DTEnabled")
+if not v_u_253 then
+    v_u_253 = Instance.new("BoolValue")
+    v_u_253.Name = "DTEnabled"
+    v_u_253.Value = false
+    v_u_253.Parent = v_u_8
+end
+local v_u_254 = false
+v22:AddToggle("Double Tap", v_u_253.Value, function(p255)
+    -- upvalues: (ref) v_u_254, (ref) v_u_253
+    v_u_254 = p255
+    v_u_253.Value = p255
+end)
+v22:AddKeybind("Peek Key", Enum.KeyCode.Q, "Toggle", function(_, p256, p257)
+    local v258 = game.Players.LocalPlayer:FindFirstChild("manik mobile")
+    local v259 = v258 and v258:FindFirstChild("Toggle")
+    if v259 then
+        if p256 == "Hold" then
+            if p257 == "press" then
+                print("press")
+                v259.Value = true
+                return
+            end
+            if p257 == "release" then
+                v259.Value = false
+                print("release")
+                return
+            end
+        else
+            v259.Value = not v259.Value
+        end
+    end
+end)
+local v_u_260 = v_u_8:FindFirstChild("DTKey")
+local v261, v262
+if v_u_260 and v_u_260.Value then
+    local v263 = string.split(v_u_260.Value, " ")
+    v261 = v263[1] or "E"
+    v262 = v263[2] or "Hold"
+else
+    v261 = "E"
+    v262 = "Hold"
+end
+v22:AddKeybind("DT Key", Enum.KeyCode[v261] or Enum.KeyCode.E, v262, function(p264, p265, p266)
+    -- upvalues: (ref) v_u_254, (copy) v_u_260
+    if v_u_254 then
+        if v_u_260 and typeof(p264) == "EnumItem" then
+            local v267 = v_u_260
+            local v268 = p264.Name
+            local v269 = tostring(v268)
+            local v270 = tostring(p265)
+            v267.Value = v269 .. " " .. v270
+        end
+        local v271 = game.Players.LocalPlayer:FindFirstChild("DT")
+        if v271 then
+            if p265 == "Hold" then
+                if p266 == "press" then
+                    v271.Value = true
+                    return
+                end
+                if p266 == "release" then
+                    v271.Value = false
+                    return
+                end
+            else
+                v271.Value = not v271.Value
+            end
+        end
+    end
+end)
+v22:AddDropdown("When peek", { "On disable", "On shoot only" }, v_u_249 and (v_u_249.Value or "On disable") or "On disable", function(p272)
+    -- upvalues: (copy) v_u_249
+    if v_u_249 then
+        v_u_249.Value = p272
+    end
+end)
+local v_u_273 = false
+local v_u_274 = 3
+local function v_u_277()
+    -- upvalues: (copy) v_u_8, (ref) v_u_273, (ref) v_u_274
+    local v275 = v_u_8:FindFirstChild("Hitchams")
+    if not v275 then
+        v275 = Instance.new("BoolValue")
+        v275.Name = "Hitchams"
+        v275.Parent = v_u_8
+    end
+    v275.Value = v_u_273
+    local v276 = v_u_8:FindFirstChild("HitchamsDuration")
+    if not v276 then
+        v276 = Instance.new("NumberValue")
+        v276.Name = "HitchamsDuration"
+        v276.Parent = v_u_8
+    end
+    v276.Value = v_u_274
+end
+v23:AddToggle("Autoreload", false, function(p278)
+    autoReloadEnabled = p278
+end)
+v23:AddToggle("Hitchams", false, function(p279)
+    -- upvalues: (ref) v_u_273, (copy) v_u_277
+    v_u_273 = p279
+    v_u_277()
+end)
+v23:AddSlider("Hitchams Duration", 3, 0.5, 10, 0.1, function(p280)
+    -- upvalues: (ref) v_u_274, (copy) v_u_277
+    v_u_274 = tonumber(p280) or 3
+    v_u_277()
+end)
+local v_u_281 = "Neverlose"
+local v_u_282 = "Original"
+local function v_u_285()
+    -- upvalues: (copy) v_u_8, (ref) v_u_281, (ref) v_u_282
+    local v283 = v_u_8:FindFirstChild("Hitsound")
+    if not v283 then
+        v283 = Instance.new("StringValue")
+        v283.Name = "Hitsound"
+        v283.Parent = v_u_8
+    end
+    v283.Value = v_u_281
+    local v284 = v_u_8:FindFirstChild("Killsound")
+    if not v284 then
+        v284 = Instance.new("StringValue")
+        v284.Name = "Killsound"
+        v284.Parent = v_u_8
+    end
+    v284.Value = v_u_282
+end
+local v291 = (function()
+    -- upvalues: (copy) v_u_4
+    local v286 = v_u_4:FindFirstChild("sounds")
+    if not v286 then
+        return {}
+    end
+    local v287 = v286:FindFirstChild("Every")
+    if not v287 then
+        return {}
+    end
+    local v288 = {}
+    for _, v289 in ipairs(v287:GetChildren()) do
+        local v290 = v289.Name
+        table.insert(v288, v290)
+    end
+    table.sort(v288)
+    return v288
+end)()
+if #v291 > 0 then
+    v_u_281 = "Neverlose"
+    v_u_282 = "Original"
+end
+v24:AddDropdown("Hitsound", v291, "Neverlose", function(p292)
+    -- upvalues: (ref) v_u_281, (copy) v_u_285
+    v_u_281 = p292
+    v_u_285()
+end)
+v24:AddDropdown("Killsound", v291, "Original", function(p293)
+    -- upvalues: (ref) v_u_282, (copy) v_u_285
+    v_u_282 = p293
+    v_u_285()
+end)
+local v_u_294 = "None"
+local v_u_295 = "None"
+local v_u_296 = 1
+local v_u_297 = 1
+local function v_u_300()
+    -- upvalues: (copy) v_u_8, (ref) v_u_294, (ref) v_u_295
+    local v298 = v_u_8:FindFirstChild("Hiteffect")
+    if not v298 then
+        v298 = Instance.new("StringValue")
+        v298.Name = "Hiteffect"
+        v298.Parent = v_u_8
+    end
+    v298.Value = v_u_294
+    local v299 = v_u_8:FindFirstChild("Killeffect")
+    if not v299 then
+        v299 = Instance.new("StringValue")
+        v299.Name = "Killeffect"
+        v299.Parent = v_u_8
+    end
+    v299.Value = v_u_295
+end
+local function v_u_303()
+    -- upvalues: (copy) v_u_8, (ref) v_u_296, (ref) v_u_297
+    local v301 = v_u_8:FindFirstChild("HiteffectTimeout")
+    if not v301 then
+        v301 = Instance.new("NumberValue")
+        v301.Name = "HiteffectTimeout"
+        v301.Parent = v_u_8
+    end
+    v301.Value = v_u_296
+    local v302 = v_u_8:FindFirstChild("KilleffectTimeout")
+    if not v302 then
+        v302 = Instance.new("NumberValue")
+        v302.Name = "KilleffectTimeout"
+        v302.Parent = v_u_8
+    end
+    v302.Value = v_u_297
+end
+local v309 = (function()
+    -- upvalues: (copy) v_u_4
+    local v304, v305 = pcall(function()
+        -- upvalues: (ref) v_u_4
+        return v_u_4:WaitForChild("Effects", 0.1)
+    end)
+    if not (v304 and v305) then
+        return { "None" }
+    end
+    local v306 = {}
+    for _, v307 in ipairs(v305:GetChildren()) do
+        local v308 = v307.Name
+        table.insert(v306, v308)
+    end
+    table.sort(v306)
+    table.insert(v306, 1, "None")
+    return v306
+end)()
+v24:AddDropdown("Hiteffect", v309, "None", function(p310)
+    -- upvalues: (ref) v_u_294, (copy) v_u_300
+    v_u_294 = p310
+    v_u_300()
+end)
+v24:AddDropdown("Killeffect", v309, "None", function(p311)
+    -- upvalues: (ref) v_u_295, (copy) v_u_300
+    v_u_295 = p311
+    v_u_300()
+end)
+v24:AddSlider("Hiteffect timeout", 1, 0.1, 3, 0.1, function(p312)
+    -- upvalues: (ref) v_u_296, (copy) v_u_303
+    v_u_296 = tonumber(p312) or 1
+    v_u_303()
+end)
+v24:AddSlider("Killeffect timeout", 1, 0.1, 3, 0.1, function(p313)
+    -- upvalues: (ref) v_u_297, (copy) v_u_303
+    v_u_297 = tonumber(p313) or 1
+    v_u_303()
+end)
+v_u_277()
+v_u_285()
+v_u_300()
+v_u_303()
+v_u_229()
+ESP_Enabled = false
+HB_Enabled = false
+NESP_Enabled = false
+ARMOR_Enabled = false
+CHAMS_Enabled = false
+SELF_ESP_Enabled = false
+NameOption = "Username"
+boxESPInstances = {}
+HP_BAR_Position = "Left"
+ARMOR_BAR_Position = "Right"
+BarsOrder = "Health, Armor"
+HP_BarOffset = 2.25
+HP_BarThickness = 2
+ARMOR_BarOffset = 2.25
+ARMOR_BarThickness = 2
+BoxThickness = 1
+NameTextOffset = 4.4
+BarSpacing = 0.25
+BoxColor = Color3.fromRGB(255, 255, 255)
+BoxOutlineColor = Color3.fromRGB(0, 0, 0)
+HP_GradientTop = Color3.fromRGB(60, 255, 80)
+HP_GradientMiddle = Color3.fromRGB(255, 170, 40)
+HP_GradientBottom = Color3.fromRGB(255, 30, 30)
+ARMOR_GradientTop = Color3.fromRGB(0, 210, 255)
+ARMOR_GradientBottom = Color3.fromRGB(30, 90, 255)
+NameESPColor = Color3.fromRGB(255, 255, 255)
+ChamsFillColor = Color3.fromRGB(255, 255, 255)
+ChamsOutlineColor = Color3.fromRGB(255, 255, 255)
+ChamsFillTransparency = 0.7
+ChamsOutlineTransparency = 0
+function createLine(p314, p315, p316, p317)
+    local v318 = Instance.new("Frame")
+    v318.Size = p315
+    v318.Position = p316
+    v318.BackgroundColor3 = p317
+    v318.BorderSizePixel = 0
+    v318.Parent = p314
+    return v318
+end
+function clearBillboard(p319, p320)
+    local v321
+    if p319 then
+        v321 = p319:FindFirstChild("HumanoidRootPart")
+    else
+        v321 = p319
+    end
+    if v321 then
+        for _, v322 in ipairs(v321:GetChildren()) do
+            if v322:IsA("BillboardGui") and v322.Name == p320 then
+                v322:Destroy()
+            end
+        end
+    end
+    if p320 == "NameESP" then
+        if p319 then
+            p319 = p319:FindFirstChildOfClass("Humanoid")
+        end
+        if p319 then
+            p319.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Viewer
+        end
+    end
+end
+local function v_u_369(p323, _)
+    -- upvalues: (copy) v_u_2, (copy) v_u_6
+    local v324 = v_u_2.LocalPlayer
+    if not p323 then
+        return
+    end
+    if p323 == v324.Character and not SELF_ESP_Enabled then
+        return
+    end
+    if p323.Name == "" then
+        return
+    end
+    if not v_u_2:GetPlayerFromCharacter(p323) then
+        return
+    end
+    local v325 = p323:FindFirstChild("HumanoidRootPart")
+    if not v325 then
+        return
+    end
+    clearBillboard(p323, "BoxESP")
+    clearBillboard(p323, "HealthBar")
+    clearBillboard(p323, "NameESP")
+    clearBillboard(p323, "ArmorBar")
+    clearBillboard(p323, "HealthText")
+    clearBillboard(p323, "ArmorText")
+    if ESP_Enabled then
+        local v326 = Instance.new("BillboardGui")
+        v326.Size = UDim2.new(4, 0, 6, 0)
+        v326.StudsOffset = Vector3.new(0, 0, 0)
+        v326.AlwaysOnTop = true
+        v326.Name = "BoxESP"
+        v326.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+        v326.MaxDistance = (1 / 0)
+        v326.Parent = v325
+        local v327 = BoxThickness
+        local v328 = createLine(v326, UDim2.new(0, v327 + v327 * 2, 1, 0), UDim2.new(0, -v327, 0, -v327), BoxOutlineColor)
+        local v329 = createLine(v326, UDim2.new(0, v327 + v327 * 2, 1, 0), UDim2.new(1, -1 - v327, 0, -v327), BoxOutlineColor)
+        local v330 = createLine(v326, UDim2.new(1, 0, 0, v327 + v327 * 2), UDim2.new(0, -v327, 0, -v327), BoxOutlineColor)
+        local v331 = createLine(v326, UDim2.new(1, 0, 0, v327 + v327 * 2), UDim2.new(0, -v327, 1, -1 - v327), BoxOutlineColor)
+        v328.ZIndex = 2
+        v329.ZIndex = 2
+        v330.ZIndex = 2
+        v331.ZIndex = 2
+        local v332 = createLine(v326, UDim2.new(0, v327, 1, 0), UDim2.new(0, 0, 0, 0), BoxColor)
+        local v333 = createLine(v326, UDim2.new(0, v327, 1, 0), UDim2.new(1, -v327, 0, 0), BoxColor)
+        local v334 = createLine(v326, UDim2.new(1, 0, 0, v327), UDim2.new(0, 0, 0, 0), BoxColor)
+        local v335 = createLine(v326, UDim2.new(1, 0, 0, v327), UDim2.new(0, 0, 1, -v327), BoxColor)
+        v332.ZIndex = 3
+        v333.ZIndex = 3
+        v334.ZIndex = 3
+        v335.ZIndex = 3
+        if not boxESPInstances[p323] then
+            boxESPInstances[p323] = {}
+        end
+        boxESPInstances[p323].frames = {
+            v332,
+            v333,
+            v334,
+            v335,
+            v328,
+            v329,
+            v330,
+            v331
+        }
+        boxESPInstances[p323].gradient = nil
+        boxESPInstances[p323].nameLabel = nil
+    end
+    if HB_Enabled then
+        local v_u_336 = Instance.new("BillboardGui")
+        v_u_336.Size = UDim2.new(0, HP_BarThickness, 6, 0)
+        local v337 = HP_BAR_Position == "Left" and -HP_BarOffset or HP_BarOffset
+        if ARMOR_Enabled and HP_BAR_Position == ARMOR_BAR_Position and BarsOrder ~= "Health, Armor" then
+            v337 = v337 + (HP_BAR_Position == "Left" and -BarSpacing or BarSpacing)
+        end
+        v_u_336.StudsOffset = Vector3.new(v337, 0, 0)
+        v_u_336.AlwaysOnTop = true
+        v_u_336.Name = "HealthBar"
+        v_u_336.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+        v_u_336.MaxDistance = (1 / 0)
+        v_u_336.Parent = v325
+        local v338 = Instance.new("Frame")
+        v338.Size = UDim2.new(1, 0, 1, 0)
+        v338.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        v338.BorderSizePixel = 0
+        v338.Parent = v_u_336
+        local v_u_339 = Instance.new("Frame")
+        v_u_339.Size = UDim2.new(1, 0, 1, 0)
+        v_u_339.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        v_u_339.BorderSizePixel = 0
+        v_u_339.AnchorPoint = Vector2.new(0, 1)
+        v_u_339.Position = UDim2.new(0, 0, 1, 0)
+        v_u_339.ZIndex = 2
+        v_u_339.Parent = v_u_336
+        local v340 = Instance.new("UIGradient")
+        v340.Rotation = 90
+        v340.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, HP_GradientTop), ColorSequenceKeypoint.new(0.5, HP_GradientMiddle), ColorSequenceKeypoint.new(1, HP_GradientBottom) })
+        v340.Parent = v_u_339
+        local v341 = Instance.new("UIStroke")
+        v341.Thickness = 0.5
+        v341.Color = Color3.fromRGB(0, 0, 0)
+        v341.Parent = v338
+        local v342 = v_u_339:FindFirstChildOfClass("UIGradient")
+        if not boxESPInstances[p323] then
+            boxESPInstances[p323] = {}
+        end
+        if not boxESPInstances[p323].healthBar then
+            boxESPInstances[p323].healthBar = {}
+        end
+        boxESPInstances[p323].healthBar.gradient = v342
+        local v_u_343 = p323:FindFirstChild("Humanoid")
+        if v_u_343 then
+            local function v347()
+                -- upvalues: (copy) v_u_343, (ref) v_u_6, (copy) v_u_339
+                local v344 = v_u_343.Health
+                local v345 = v_u_343.MaxHealth
+                local v346 = v344 / math.max(1, v345)
+                v_u_6:Create(v_u_339, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                    ["Size"] = UDim2.new(1, 0, v346, 0)
+                }):Play()
+            end
+            v_u_343.HealthChanged:Connect(v347)
+            v347()
+            v_u_343.AncestryChanged:Connect(function(_, p348)
+                -- upvalues: (copy) v_u_336
+                if not p348 and v_u_336 then
+                    v_u_336:Destroy()
+                end
+            end)
+        end
+    end
+    if ARMOR_Enabled then
+        local v_u_349 = Instance.new("BillboardGui")
+        v_u_349.Size = UDim2.new(0, ARMOR_BarThickness, 6, 0)
+        local v350 = ARMOR_BAR_Position == "Left" and -ARMOR_BarOffset or ARMOR_BarOffset
+        if HB_Enabled and HP_BAR_Position == ARMOR_BAR_Position and BarsOrder == "Health, Armor" then
+            v350 = v350 + (ARMOR_BAR_Position == "Left" and -BarSpacing or BarSpacing)
+        end
+        v_u_349.StudsOffset = Vector3.new(v350, 0, 0)
+        v_u_349.AlwaysOnTop = true
+        v_u_349.Name = "ArmorBar"
+        v_u_349.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+        v_u_349.MaxDistance = (1 / 0)
+        v_u_349.Parent = v325
+        local v351 = Instance.new("Frame")
+        v351.Size = UDim2.new(1, 0, 1, 0)
+        v351.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        v351.BorderSizePixel = 0
+        v351.Parent = v_u_349
+        local v_u_352 = Instance.new("Frame")
+        v_u_352.Size = UDim2.new(1, 0, 1, 0)
+        v_u_352.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        v_u_352.BorderSizePixel = 0
+        v_u_352.AnchorPoint = Vector2.new(0, 1)
+        v_u_352.Position = UDim2.new(0, 0, 1, 0)
+        v_u_352.ZIndex = 2
+        v_u_352.Parent = v_u_349
+        local v353 = Instance.new("UIGradient")
+        v353.Rotation = 90
+        v353.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, ARMOR_GradientTop), ColorSequenceKeypoint.new(1, ARMOR_GradientBottom) })
+        v353.Parent = v_u_352
+        local v354 = Instance.new("UIStroke")
+        v354.Thickness = 0.5
+        v354.Color = Color3.fromRGB(0, 0, 0)
+        v354.Parent = v351
+        local v355 = v_u_352:FindFirstChildOfClass("UIGradient")
+        if not boxESPInstances[p323] then
+            boxESPInstances[p323] = {}
+        end
+        if not boxESPInstances[p323].armorBar then
+            boxESPInstances[p323].armorBar = {}
+        end
+        boxESPInstances[p323].armorBar.gradient = v355
+        local v_u_356 = p323:FindFirstChild("Data")
+        if v_u_356 then
+            v_u_356 = v_u_356:FindFirstChild("Armor")
+        end
+        if v_u_356 and v_u_356:IsA("IntValue") then
+            local function v358()
+                -- upvalues: (copy) v_u_356, (ref) v_u_6, (copy) v_u_352
+                local v357 = v_u_356.Value / 100
+                v_u_6:Create(v_u_352, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                    ["Size"] = UDim2.new(1, 0, v357, 0)
+                }):Play()
+            end
+            v_u_356.Changed:Connect(v358)
+            v358()
+            p323.AncestryChanged:Connect(function(_, p359)
+                -- upvalues: (copy) v_u_349
+                if not p359 and v_u_349 then
+                    v_u_349:Destroy()
+                end
+            end)
+        end
+    end
+    if not NESP_Enabled then
+        ::l56::
+        return
+    end
+    local v_u_360 = Instance.new("BillboardGui")
+    v_u_360.Size = UDim2.new(0, 50, 0, 50)
+    local v361 = NameTextOffset
+    v_u_360.StudsOffset = Vector3.new(0, v361, 0)
+    v_u_360.AlwaysOnTop = true
+    v_u_360.Name = "NameESP"
+    v_u_360.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    v_u_360.MaxDistance = (1 / 0)
+    v_u_360.Parent = v325
+    local v362 = Instance.new("TextLabel")
+    v362.Size = UDim2.new(1, 0, 1, 0)
+    v362.BackgroundTransparency = 1
+    v362.TextColor3 = NameESPColor
+    v362.TextScaled = false
+    v362.ZIndex = 10
+    local v363 = p323.Name
+    local v364 = p323:FindFirstChildOfClass("Humanoid")
+    local v365 = v_u_2:GetPlayerFromCharacter(p323)
+    if NameOption == "Displayname" then
+        if v364 then
+            local v366 = v364.DisplayName
+            if typeof(v366) == "string" and v364.DisplayName ~= "" then
+                v363 = v364.DisplayName
+                goto l63
+            end
+        end
+        if v365 then
+            v363 = v365.DisplayName
+        end
+    elseif v365 then
+        v363 = v365.Name
+    end
+    ::l63::
+    v362.Text = v363
+    v362.Parent = v_u_360
+    if not boxESPInstances[p323] then
+        boxESPInstances[p323] = {}
+    end
+    boxESPInstances[p323].nameLabel = v362
+    local v367 = Instance.new("UIStroke")
+    v367.Thickness = 1
+    v367.Color = Color3.fromRGB(0, 0, 0)
+    v367.Transparency = 0
+    v367.Parent = v362
+    if v364 then
+        v364.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+    end
+    p323.AncestryChanged:Connect(function(_, p368)
+        -- upvalues: (copy) v_u_360
+        if not p368 and v_u_360 then
+            v_u_360:Destroy()
+        end
+    end)
+    goto l56
+end
+function chamsChecker()
+    -- upvalues: (copy) v_u_2, (copy) v_u_8
+    while CHAMS_Enabled do
+        for _, v370 in ipairs(v_u_2:GetPlayers()) do
+            if (v370 ~= v_u_8 or SELF_ESP_Enabled) and v370.Character then
+                local v371 = v370.Character:FindFirstChildOfClass("Highlight")
+                if not v371 then
+                    v371 = Instance.new("Highlight")
+                    v371.Parent = v370.Character
+                end
+                v371.OutlineColor = ChamsOutlineColor
+                v371.FillColor = ChamsFillColor
+                v371.FillTransparency = ChamsFillTransparency
+                v371.OutlineTransparency = ChamsOutlineTransparency
+            end
+        end
+        task.wait(1)
+    end
+end
+function clearAllChams()
+    -- upvalues: (copy) v_u_2
+    for _, v372 in ipairs(v_u_2:GetPlayers()) do
+        if v372.Character then
+            local v373 = v372.Character:FindFirstChildOfClass("Highlight")
+            if v373 then
+                v373:Destroy()
+            end
+        end
+    end
+end
+function clearSelfESP()
+    -- upvalues: (copy) v_u_8
+    if v_u_8.Character then
+        if v_u_8.Character:FindFirstChild("HumanoidRootPart") then
+            clearBillboard(v_u_8.Character, "BoxESP")
+            clearBillboard(v_u_8.Character, "HealthBar")
+            clearBillboard(v_u_8.Character, "NameESP")
+            clearBillboard(v_u_8.Character, "ArmorBar")
+        end
+        local v374 = v_u_8.Character:FindFirstChildOfClass("Highlight")
+        if v374 then
+            v374:Destroy()
+        end
+    end
+end
+function updateChams()
+    clearAllChams()
+    if CHAMS_Enabled then
+        coroutine.wrap(chamsChecker)()
+    end
+end
+function updateESP()
+    -- upvalues: (copy) v_u_2, (copy) v_u_8, (copy) v_u_369
+    for _, v375 in pairs(boxESPInstances) do
+        if v375.frames then
+            local v376 = {
+                v375.frames[1],
+                v375.frames[2],
+                v375.frames[3],
+                v375.frames[4]
+            }
+            for _, v377 in ipairs(v376) do
+                if v377 and v377.Parent then
+                    v377.BackgroundColor3 = BoxColor
+                end
+            end
+            local v378 = {
+                v375.frames[5],
+                v375.frames[6],
+                v375.frames[7],
+                v375.frames[8]
+            }
+            for _, v379 in ipairs(v378) do
+                if v379 and v379.Parent then
+                    v379.BackgroundColor3 = BoxOutlineColor
+                end
+            end
+        end
+        if v375.healthBar and v375.healthBar.gradient then
+            local v380 = v375.healthBar.gradient
+            if v380 and v380.Parent then
+                v380.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, HP_GradientTop), ColorSequenceKeypoint.new(0.5, HP_GradientMiddle), ColorSequenceKeypoint.new(1, HP_GradientBottom) })
+            end
+        end
+        if v375.armorBar and v375.armorBar.gradient then
+            local v381 = v375.armorBar.gradient
+            if v381 and v381.Parent then
+                v381.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, ARMOR_GradientTop), ColorSequenceKeypoint.new(1, ARMOR_GradientBottom) })
+            end
+        end
+        if v375.nameLabel then
+            local v382 = v375.nameLabel
+            if v382 and v382.Parent then
+                v382.TextColor3 = NameESPColor
+            end
+        end
+    end
+    for _, v383 in ipairs(v_u_2:GetPlayers()) do
+        if v383 ~= v_u_8 or SELF_ESP_Enabled then
+            if v383.Character then
+                v_u_369(v383.Character, true)
+            end
+            v383.CharacterAdded:Connect(function(p384)
+                -- upvalues: (ref) v_u_369
+                task.wait(0.6)
+                v_u_369(p384, true)
+            end)
+        end
+    end
+    if not NESP_Enabled then
+        for _, v385 in ipairs(v_u_2:GetPlayers()) do
+            if v385.Character then
+                local v386 = v385.Character:FindFirstChildOfClass("Humanoid")
+                if v386 then
+                    v386.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Viewer
+                end
+            end
+        end
+    end
+end
+function ESPChecker()
+    -- upvalues: (copy) v_u_2, (copy) v_u_8, (copy) v_u_369
+    while true do
+        task.wait(1)
+        for _, v387 in ipairs(v_u_2:GetPlayers()) do
+            if v387 ~= v_u_8 or SELF_ESP_Enabled then
+                local v388 = v387.Character
+                if v388 and v388.Parent and (v388 ~= v_u_8.Character or SELF_ESP_Enabled) then
+                    local v389 = v388:FindFirstChild("HumanoidRootPart")
+                    if v389 then
+                        if ESP_Enabled and not v389:FindFirstChild("BoxESP") then
+                            v_u_369(v388, true)
+                        end
+                        if HB_Enabled and not v389:FindFirstChild("HealthBar") then
+                            v_u_369(v388, true)
+                        end
+                        if NESP_Enabled and not v389:FindFirstChild("NameESP") then
+                            v_u_369(v388, true)
+                        end
+                        if ARMOR_Enabled and not v389:FindFirstChild("ArmorBar") then
+                            v_u_369(v388, true)
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+task.spawn(ESPChecker)
+local v391 = v121:AddToggle("Box ESP", false, function(p390)
+    ESP_Enabled = p390
+    updateESP()
+end):AddSettings()
+v391:AddColorPicker("Box color", BoxColor, function(p392)
+    BoxColor = p392
+    updateESP()
+end)
+v391:AddColorPicker("Outline color", BoxOutlineColor, function(p393)
+    BoxOutlineColor = p393
+    updateESP()
+end)
+v391:AddSlider("Box Thickness", 1, 0.5, 3, 0.01, function(p394)
+    BoxThickness = p394
+    updateESP()
+end)
+v391:AddDropdown("Bars order", { "Health, Armor", "Armor, Health" }, "Health, Armor", function(p395)
+    BarsOrder = p395
+    updateESP()
+end)
+v391:AddSlider("Offset between bars", 0.25, 0, 1, 0.01, function(p396)
+    BarSpacing = p396
+    updateESP()
+end)
+local v398 = v121:AddToggle("Healthbar", false, function(p397)
+    HB_Enabled = p397
+    updateESP()
+end):AddSettings()
+v398:AddDropdown("Health bar position", { "Left", "Right" }, "Left", function(p399)
+    HP_BAR_Position = p399
+    updateESP()
+end)
+v398:AddSlider("Health Bar Offset", 2.25, 0, 5, 0.01, function(p400)
+    HP_BarOffset = p400
+    updateESP()
+end)
+v398:AddSlider("Health Bar Thickness", 2, 0.5, 5, 0.01, function(p401)
+    HP_BarThickness = p401
+    updateESP()
+end)
+v398:AddColorPicker("Gradient Top", HP_GradientTop, function(p402)
+    HP_GradientTop = p402
+    updateESP()
+end)
+v398:AddColorPicker("Gradient Middle", HP_GradientMiddle, function(p403)
+    HP_GradientMiddle = p403
+    updateESP()
+end)
+v398:AddColorPicker("Gradient Bottom", HP_GradientBottom, function(p404)
+    HP_GradientBottom = p404
+    updateESP()
+end)
+local v406 = v121:AddToggle("Name ESP", false, function(p405)
+    NESP_Enabled = p405
+    updateESP()
+end):AddSettings()
+v406:AddSlider("Name Text Offset", 4.4, 0, 10, 0.01, function(p407)
+    NameTextOffset = p407
+    updateESP()
+end)
+v406:AddColorPicker("Text color", NameESPColor, function(p408)
+    NameESPColor = p408
+    updateESP()
+end)
+local v410 = v121:AddToggle("Armor", false, function(p409)
+    ARMOR_Enabled = p409
+    updateESP()
+end):AddSettings()
+v410:AddDropdown("Armor bar position", { "Left", "Right" }, "Right", function(p411)
+    ARMOR_BAR_Position = p411
+    updateESP()
+end)
+v410:AddSlider("Armor Bar Offset", 2.25, 0, 5, 0.01, function(p412)
+    ARMOR_BarOffset = p412
+    updateESP()
+end)
+v410:AddSlider("Armor Bar Thickness", 2, 0.5, 5, 0.01, function(p413)
+    ARMOR_BarThickness = p413
+    updateESP()
+end)
+v410:AddColorPicker("Gradient Top", ARMOR_GradientTop, function(p414)
+    ARMOR_GradientTop = p414
+    updateESP()
+end)
+v410:AddColorPicker("Gradient Bottom", ARMOR_GradientBottom, function(p415)
+    ARMOR_GradientBottom = p415
+    updateESP()
+end)
+v121:AddDropdown("Use name", { "Username", "Displayname" }, "Username", function(p416)
+    NameOption = tostring(p416) == "Displayname" and "Displayname" or "Username"
+    updateESP()
+end)
+local v418 = v122:AddToggle("Chams", false, function(p417)
+    CHAMS_Enabled = p417
+    if CHAMS_Enabled then
+        coroutine.wrap(chamsChecker)()
+    else
+        clearAllChams()
+    end
+end):AddSettings()
+v418:AddColorPicker("Fill color", ChamsFillColor, function(p419)
+    ChamsFillColor = p419
+    updateChams()
+end)
+v418:AddColorPicker("Outline color", ChamsOutlineColor, function(p420)
+    ChamsOutlineColor = p420
+    updateChams()
+end)
+v418:AddSlider("Fill transparency", ChamsFillTransparency, 0, 1, 0.01, function(p421)
+    ChamsFillTransparency = p421
+    updateChams()
+end)
+v418:AddSlider("Outline transparency", ChamsOutlineTransparency, 0, 1, 0.01, function(p422)
+    ChamsOutlineTransparency = p422
+    updateChams()
+end)
+local v_u_423 = {
+    ["Halo"] = false,
+    ["Angel Wings"] = false,
+    ["Ambient Aura"] = false,
+    ["Ground Tornado"] = false,
+    ["Sakura"] = false,
+    ["Enchanted"] = false,
+    ["Enchanted 2"] = false
+}
+local v_u_424 = {}
+local function v_u_427(p425)
+    -- upvalues: (copy) v_u_424
+    if v_u_424[p425] then
+        for _, v426 in ipairs(v_u_424[p425]) do
+            if v426 and v426.Parent then
+                v426:Destroy()
+            end
+        end
+        v_u_424[p425] = nil
+    end
+end
+local function v_u_436(p428)
+    -- upvalues: (copy) v_u_8, (copy) v_u_427, (copy) v_u_1, (copy) v_u_424
+    if v_u_8.Character then
+        v_u_427(p428)
+        local v429 = v_u_1:FindFirstChild("Auras")
+        if v429 then
+            local v430 = v429:FindFirstChild(p428)
+            if v430 then
+                v_u_424[p428] = {}
+                for _, v431 in ipairs(v430:GetChildren()) do
+                    if v431:IsA("BasePart") then
+                        local v432
+                        if v431.Name == "HumanoidRootPart" then
+                            v432 = v_u_8.Character:FindFirstChild("HumanoidRootPart")
+                        elseif v431.Name == "Head" then
+                            v432 = v_u_8.Character:FindFirstChild("Head")
+                        elseif v431.Name == "Torso" then
+                            v432 = v_u_8.Character:FindFirstChild("Torso")
+                        else
+                            v432 = v_u_8.Character:FindFirstChild(v431.Name)
+                        end
+                        if v432 then
+                            for _, v433 in ipairs(v431:GetChildren()) do
+                                local v434 = v433:Clone()
+                                v434.Parent = v432
+                                local v435 = v_u_424[p428]
+                                table.insert(v435, v434)
+                            end
+                        end
+                    end
+                end
+            end
+        else
+            return
+        end
+    else
+        return
+    end
+end
+v123:AddToggle("Halo", false, function(p437)
+    -- upvalues: (copy) v_u_423, (copy) v_u_436, (copy) v_u_427
+    v_u_423.Halo = p437
+    if p437 then
+        v_u_436("Halo")
+    else
+        v_u_427("Halo")
+    end
+end)
+v123:AddToggle("Angel Wings", false, function(p438)
+    -- upvalues: (copy) v_u_423, (copy) v_u_436, (copy) v_u_427
+    v_u_423["Angel Wings"] = p438
+    if p438 then
+        v_u_436("Angel Wings")
+    else
+        v_u_427("Angel Wings")
+    end
+end)
+v123:AddToggle("Ambient Aura", false, function(p439)
+    -- upvalues: (copy) v_u_423, (copy) v_u_436, (copy) v_u_427
+    v_u_423["Ambient Aura"] = p439
+    if p439 then
+        v_u_436("Ambient Aura")
+    else
+        v_u_427("Ambient Aura")
+    end
+end)
+v123:AddToggle("Ground Tornado", false, function(p440)
+    -- upvalues: (copy) v_u_423, (copy) v_u_436, (copy) v_u_427
+    v_u_423["Ground Tornado"] = p440
+    if p440 then
+        v_u_436("Ground Tornado")
+    else
+        v_u_427("Ground Tornado")
+    end
+end)
+v123:AddToggle("Sakura", false, function(p441)
+    -- upvalues: (copy) v_u_423, (copy) v_u_436, (copy) v_u_427
+    v_u_423.Sakura = p441
+    if p441 then
+        v_u_436("Sakura")
+    else
+        v_u_427("Sakura")
+    end
+end)
+v123:AddToggle("Enchanted", false, function(p442)
+    -- upvalues: (copy) v_u_423, (copy) v_u_436, (copy) v_u_427
+    v_u_423.Enchanted = p442
+    if p442 then
+        v_u_436("Enchanted")
+    else
+        v_u_427("Enchanted")
+    end
+end)
+v123:AddToggle("Enchanted 2", false, function(p443)
+    -- upvalues: (copy) v_u_423, (copy) v_u_436, (copy) v_u_427
+    v_u_423["Enchanted 2"] = p443
+    if p443 then
+        v_u_436("Enchanted 2")
+    else
+        v_u_427("Enchanted 2")
+    end
+end)
+local v_u_444 = false
+local v_u_445 = {}
+local v_u_446 = {}
+local function v_u_453()
+    -- upvalues: (copy) v_u_8, (ref) v_u_445, (ref) v_u_446
+    if v_u_8.Character then
+        v_u_445 = {}
+        v_u_446 = {}
+        for _, v447 in ipairs(v_u_8.Character:GetChildren()) do
+            if v447:IsA("BasePart") then
+                v_u_445[v447.Name] = v447.BrickColor
+                v_u_446[v447.Name] = v447.Material
+            end
+        end
+        for _, v448 in ipairs(v_u_8.Character:GetChildren()) do
+            if v448:IsA("Accessory") then
+                for _, v449 in ipairs(v448:GetDescendants()) do
+                    if v449:IsA("BasePart") then
+                        local v450 = v448.Name
+                        local v451 = v449.Name
+                        local v452 = v450 .. "_" .. v451
+                        v_u_445[v452] = v449.BrickColor
+                        v_u_446[v452] = v449.Material
+                    end
+                end
+            end
+        end
+    end
+end
+local function v_u_457()
+    -- upvalues: (copy) v_u_8
+    if v_u_8.Character then
+        for _, v454 in ipairs(v_u_8.Character:GetChildren()) do
+            if v454:IsA("BasePart") then
+                v454.BrickColor = BrickColor.new("White")
+                v454.Material = Enum.Material.ForceField
+            end
+        end
+        for _, v455 in ipairs(v_u_8.Character:GetChildren()) do
+            if v455:IsA("Accessory") then
+                for _, v456 in ipairs(v455:GetDescendants()) do
+                    if v456:IsA("BasePart") then
+                        v456.BrickColor = BrickColor.new("White")
+                        v456.Material = Enum.Material.ForceField
+                    end
+                end
+            end
+        end
+    end
+end
+local function v_u_464()
+    -- upvalues: (copy) v_u_8, (ref) v_u_445, (ref) v_u_446
+    if v_u_8.Character then
+        for _, v458 in ipairs(v_u_8.Character:GetChildren()) do
+            if v458:IsA("BasePart") and v_u_445[v458.Name] then
+                v458.BrickColor = v_u_445[v458.Name]
+                v458.Material = v_u_446[v458.Name]
+            end
+        end
+        for _, v459 in ipairs(v_u_8.Character:GetChildren()) do
+            if v459:IsA("Accessory") then
+                for _, v460 in ipairs(v459:GetDescendants()) do
+                    if v460:IsA("BasePart") then
+                        local v461 = v459.Name
+                        local v462 = v460.Name
+                        local v463 = v461 .. "_" .. v462
+                        if v_u_445[v463] then
+                            v460.BrickColor = v_u_445[v463]
+                            v460.Material = v_u_446[v463]
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+v124:AddToggle("ForceField", false, function(p465)
+    -- upvalues: (ref) v_u_444, (copy) v_u_453, (copy) v_u_457, (copy) v_u_464
+    v_u_444 = p465
+    if v_u_444 then
+        v_u_453()
+        v_u_457()
+    else
+        v_u_464()
+    end
+end)
+local v466 = v_u_4:WaitForChild("AntiAimRemotes")
+local v_u_467 = v466:WaitForChild("YawOffset")
+local v_u_468 = v466:WaitForChild("YawJitter")
+local v_u_469 = v466:WaitForChild("HeadOffset")
+local v_u_470 = v466:WaitForChild("HeadJitter")
+local v_u_471 = v466:WaitForChild("FakeRate")
+local v_u_472 = v_u_4:FindFirstChild("anims")
+local v_u_473 = nil
+local v_u_474 = "None"
+local v_u_475 = 1
+local function v_u_483(p476)
+    -- upvalues: (copy) v_u_8, (ref) v_u_473, (copy) v_u_472, (ref) v_u_475
+    local v477 = v_u_8.Character
+    if v477 then
+        local v478 = v477:FindFirstChildOfClass("Humanoid")
+        if v478 then
+            local v479 = v478:FindFirstChildOfClass("Animator")
+            if v479 then
+                local v_u_480 = v_u_473
+                if v_u_480 then
+                    pcall(function()
+                        -- upvalues: (copy) v_u_480
+                        v_u_480:Stop()
+                    end)
+                end
+                v_u_473 = nil
+                local v481 = v_u_472
+                if v481 then
+                    v481 = v_u_472:FindFirstChild(p476)
+                end
+                if v481 then
+                    v_u_473 = v479:LoadAnimation(v481)
+                    if p476 == "random" then
+                        local v482 = v_u_475
+                        v_u_473:AdjustSpeed(tonumber(v482) or 1)
+                    end
+                    v_u_473:Play()
+                end
+            end
+        else
+            return
+        end
+    else
+        return
+    end
+end
+v25:AddDropdown("Body Yaw", {
+    "None",
+    "Up",
+    "Down",
+    "Random"
+}, "None", function(p484)
+    -- upvalues: (ref) v_u_474, (ref) v_u_473, (copy) v_u_483
+    v_u_474 = p484
+    if p484 == "None" then
+        local v_u_485 = v_u_473
+        if v_u_485 then
+            pcall(function()
+                -- upvalues: (copy) v_u_485
+                v_u_485:Stop()
+            end)
+        end
+        v_u_473 = nil
+    else
+        v_u_483(string.lower(p484))
+    end
+end)
+local v_u_486 = false
+local v_u_487 = nil
+v25:AddToggle("MoveDir Rotation", false, function(p488)
+    -- upvalues: (ref) v_u_486, (ref) v_u_487
+    v_u_486 = p488
+    if v_u_487 then
+        v_u_487:Disconnect()
+        v_u_487 = nil
+    end
+    local v489 = game.Players.LocalPlayer.Character
+    if v489 then
+        v489 = v489:FindFirstChildOfClass("Humanoid")
+    end
+    if v489 then
+        v489.AutoRotate = not p488
+    end
+    if v_u_486 then
+        v_u_487 = game:GetService("RunService").Heartbeat:Connect(function()
+            local v490 = game.Players.LocalPlayer.Character
+            if v490 then
+                local v491 = v490:FindFirstChildOfClass("Humanoid")
+                local v492 = v490:FindFirstChild("HumanoidRootPart")
+                if v491 and v492 and v491.MoveDirection.Magnitude > 0 then
+                    local v493 = v491.MoveDirection
+                    local v494 = v493.X
+                    local v495 = v493.Z
+                    local v496 = math.atan2(v494, v495)
+                    v492.CFrame = CFrame.new(v492.Position) * CFrame.Angles(0, v496, 0)
+                end
+            end
+        end)
+    end
+end)
+v25:AddSlider("Body Yaw Speed", 1, 1, 5, 1, function(p497)
+    -- upvalues: (ref) v_u_475, (ref) v_u_473, (ref) v_u_474
+    v_u_475 = p497
+    if v_u_473 and v_u_474 == "Random" then
+        v_u_473:AdjustSpeed(p497)
+    end
+end)
+local _ = nil
+local v_u_498 = {
+    ["mode"] = "None",
+    ["angle"] = 60,
+    ["speed"] = 5,
+    ["base"] = 0
+}
+local v_u_499 = nil
+local function v_u_514()
+    -- upvalues: (ref) v_u_499, (copy) v_u_498, (copy) v_u_467
+    if v_u_499 then
+        v_u_499:Disconnect()
+    end
+    v_u_499 = nil
+    local v_u_500 = os.clock()
+    v_u_499 = game:GetService("RunService").Heartbeat:Connect(function()
+        -- upvalues: (ref) v_u_498, (copy) v_u_500, (ref) v_u_467
+        local v501 = os.clock()
+        if v_u_498.mode == "Static LR" then
+            local v502 = v_u_498.speed
+            local v503 = tonumber(v502) or 1
+            local v504 = math.clamp(v503, 1, 10)
+            local v505 = v504 * ((v504 - 1) / 9 * 3 + 1)
+            local v506 = (v501 - v_u_500) * math.max(0.1, v505)
+            local v507 = math.floor(v506) % 2 == 0 and 1 or -1
+            v_u_467:FireServer(v_u_498.base + v507 * v_u_498.angle)
+        elseif v_u_498.mode == "Sway" then
+            local v508 = v_u_498.speed
+            local v509 = tonumber(v508) or 1
+            local v510 = math.clamp(v509, 1, 10)
+            local v511 = 6.283185307179586 * v510 * ((v510 - 1) / 9 * 3 + 1)
+            local v512 = v_u_498.base
+            local v513 = (v501 - v_u_500) * v511
+            v_u_467:FireServer(v512 + math.sin(v513) * v_u_498.angle)
+        end
+    end)
+end
+local v_u_515 = "None"
+local v_u_516 = 0
+v25:AddDropdown("Yaw Offset Mode", {
+    "None",
+    "Random",
+    "Static LR",
+    "Sway"
+}, "None", function(p517)
+    -- upvalues: (ref) v_u_515, (copy) v_u_467, (ref) v_u_499, (copy) v_u_498, (copy) v_u_514
+    v_u_515 = p517
+    v_u_467:FireServer(p517)
+    if v_u_499 then
+        v_u_499:Disconnect()
+    end
+    v_u_499 = nil
+    if p517 == "Static LR" or p517 == "Sway" then
+        v_u_498.mode = p517
+        if yawFakeToggleObj and yawFakeEnabled then
+            yawFakeEnabled = false
+            yawFakeToggleObj:Set(false)
+        end
+        v_u_514()
+    elseif p517 == "None" then
+        v_u_467:FireServer(0)
+    end
+end)
+v25:AddSlider("Yaw Offset", 0, -180, 180, 1, function(p518)
+    -- upvalues: (ref) v_u_516, (ref) v_u_515, (copy) v_u_467, (copy) v_u_498
+    v_u_516 = p518
+    if v_u_515 == "None" or v_u_515 == "Random" then
+        v_u_467:FireServer(p518)
+    end
+    v_u_498.base = tonumber(p518) or 0
+end)
+v25:AddSlider("Yaw Angle", 60, 0, 180, 1, function(p519)
+    -- upvalues: (copy) v_u_498
+    local v520 = v_u_498
+    local v521 = tonumber(p519) or 60
+    v520.angle = math.clamp(v521, 0, 180)
+end)
+v25:AddSlider("Yaw Speed", 5, 1, 10, 0.1, function(p522)
+    -- upvalues: (copy) v_u_498
+    v_u_498.speed = tonumber(p522) or 5
+end)
+local v_u_523 = "None"
+local v_u_524 = 0
+local v_u_525 = {
+    ["mode"] = "None",
+    ["angle"] = 30,
+    ["speed"] = 5,
+    ["base"] = 0
+}
+local v_u_526 = nil
+local function v_u_555()
+    -- upvalues: (ref) v_u_526, (copy) v_u_525, (copy) v_u_469
+    if v_u_526 then
+        v_u_526:Disconnect()
+    end
+    v_u_526 = nil
+    local v_u_527 = os.clock()
+    v_u_526 = game:GetService("RunService").Heartbeat:Connect(function()
+        -- upvalues: (ref) v_u_525, (copy) v_u_527, (ref) v_u_469
+        local v528 = os.clock()
+        if v_u_525.mode == "Static LR" then
+            local v529 = v_u_525.speed
+            local v530 = tonumber(v529) or 1
+            local v531 = math.clamp(v530, 1, 10)
+            local v532 = v531 * ((v531 - 1) / 9 * 3 + 1)
+            local v533 = (v528 - v_u_527) * math.max(0.1, v532)
+            local v534 = math.floor(v533) % 2 == 0 and 1 or -1
+            v_u_469:FireServer(v_u_525.base + v534 * v_u_525.angle)
+        elseif v_u_525.mode == "Sway" then
+            v_u_525._dir = v_u_525._dir or 1
+            local v535 = (v_u_525.base or 0) - (v_u_525.angle or 0)
+            local v536 = math.min(50, v535)
+            local v537 = math.max(-50, v536)
+            local v538 = (v_u_525.base or 0) + (v_u_525.angle or 0)
+            local v539 = math.min(50, v538)
+            local v540 = math.max(-50, v539)
+            if v540 >= v537 then
+                local v541 = v540
+                v540 = v537
+                v537 = v541
+            end
+            if v_u_525._cur == nil then
+                local v542 = v_u_525
+                local v543 = v_u_525.base or 0
+                local v544 = math.min(v537, v543)
+                v542._cur = math.max(v540, v544)
+            end
+            local v545 = v537 - v540
+            local v546 = math.max(0.001, v545)
+            local v547 = v_u_525.speed
+            local v548 = tonumber(v547) or 1
+            local v549 = math.clamp(v548, 1, 10)
+            local v550 = v549 * ((v549 - 1) / 9 * 3 + 1)
+            local v551 = v546 * 2 * v550
+            local v552 = game:GetService("RunService").Heartbeat:Wait() or 0
+            local v553 = math.clamp(v552, 0, 0.05)
+            local v554 = v553 == 0 and 0.016 or v553
+            v_u_525._cur = v_u_525._cur + v_u_525._dir * v551 * v554
+            if v537 < v_u_525._cur then
+                v_u_525._cur = v537
+                v_u_525._dir = -1
+            elseif v_u_525._cur < v540 then
+                v_u_525._cur = v540
+                v_u_525._dir = 1
+            end
+            v_u_469:FireServer(v_u_525._cur)
+        end
+    end)
+end
+v25:AddDropdown("Head Offset Mode", {
+    "None",
+    "Random",
+    "Static LR",
+    "Sway"
+}, "None", function(p556)
+    -- upvalues: (ref) v_u_523, (copy) v_u_469, (ref) v_u_526, (copy) v_u_525, (copy) v_u_555
+    v_u_523 = p556
+    v_u_469:FireServer(p556)
+    if v_u_526 then
+        v_u_526:Disconnect()
+    end
+    v_u_526 = nil
+    if p556 == "Static LR" or p556 == "Sway" then
+        v_u_525.mode = p556
+        if headFakeToggleObj and headFakeEnabled then
+            headFakeEnabled = false
+            headFakeToggleObj:Set(false)
+        end
+        v_u_555()
+    elseif p556 == "None" then
+        v_u_469:FireServer(0)
+    end
+end)
+v25:AddSlider("Head Offset", 0, -50, 50, 1, function(p557)
+    -- upvalues: (ref) v_u_524, (ref) v_u_523, (copy) v_u_469, (copy) v_u_525
+    v_u_524 = p557
+    if v_u_523 == "None" or v_u_523 == "Random" then
+        v_u_469:FireServer(p557)
+    end
+    v_u_525.base = tonumber(p557) or 0
+end)
+v25:AddSlider("Head Angle", 30, 0, 50, 1, function(p558)
+    -- upvalues: (copy) v_u_525
+    local v559 = v_u_525
+    local v560 = tonumber(p558) or 30
+    v559.angle = math.clamp(v560, 0, 90)
+end)
+v25:AddSlider("Head Speed", 5, 1, 10, 0.1, function(p561)
+    -- upvalues: (copy) v_u_525
+    v_u_525.speed = tonumber(p561) or 5
+end)
+local v_u_562 = false
+local v_u_563 = false
+v26:AddToggle("Head fake offset", false, function(p564)
+    -- upvalues: (ref) v_u_563, (copy) v_u_469
+    v_u_563 = p564
+    v_u_469:FireServer(p564 and "Fake" or "None")
+end)
+v26:AddToggle("Yaw fake offset", false, function(p565)
+    -- upvalues: (ref) v_u_562, (copy) v_u_467
+    v_u_562 = p565
+    v_u_467:FireServer(p565 and "Fake" or "None")
+end)
+v26:AddSlider("Yaw Jitter", 0, 0, 90, 1, function(p566)
+    -- upvalues: (copy) v_u_468
+    v_u_468:FireServer(p566)
+end)
+v26:AddSlider("Head Jitter", 0, 0, 50, 1, function(p567)
+    -- upvalues: (copy) v_u_470
+    v_u_470:FireServer(p567)
+end)
+v26:AddSlider("Fake Rate", 5, 1, 10, 1, function(p568)
+    -- upvalues: (copy) v_u_471
+    v_u_471:FireServer(p568)
+end)
+v_u_8.CharacterAdded:Connect(function()
+    -- upvalues: (ref) v_u_474, (copy) v_u_483, (ref) v_u_473, (ref) v_u_475, (copy) v_u_423, (copy) v_u_436, (ref) v_u_444, (copy) v_u_453, (copy) v_u_457, (ref) v_u_486
+    task.wait(0.3)
+    pcall(function()
+        if ensureCharacterValues then
+            ensureCharacterValues()
+        end
+    end)
+    if v_u_474 and v_u_474 ~= "None" then
+        v_u_483(string.lower(v_u_474))
+        if v_u_473 and v_u_474 == "Random" then
+            local v569 = v_u_475
+            v_u_473:AdjustSpeed(tonumber(v569) or 1)
+        end
+    end
+    task.wait(0.5)
+    for v570, v571 in pairs(v_u_423) do
+        if v571 then
+            v_u_436(v570)
+        end
+    end
+    if v_u_444 then
+        task.wait(0.1)
+        v_u_453()
+        v_u_457()
+    end
+    if humanoid then
+        humanoid.AutoRotate = not v_u_486
+    end
+end)
+rageAimEnabled = false
+autoShootEnabled = false
+autoReloadEnabled = false
+function ensureCharacterValues()
+    -- upvalues: (copy) v_u_8
+    if v_u_8.Character then
+        local v572 = v_u_8.Character
+        if rageAimEnabled then
+            local v573 = v572:FindFirstChild("rageaim")
+            if not v573 then
+                v573 = Instance.new("BoolValue")
+                v573.Name = "rageaim"
+                v573.Parent = v572
+            end
+            v573.Value = true
+        else
+            local v574 = v572:FindFirstChild("rageaim")
+            if v574 then
+                v574:Destroy()
+            end
+        end
+        if autoShootEnabled then
+            local v575 = v572:FindFirstChild("autoshoot")
+            if not v575 then
+                v575 = Instance.new("BoolValue")
+                v575.Name = "autoshoot"
+                v575.Parent = v572
+            end
+            v575.Value = true
+        else
+            local v576 = v572:FindFirstChild("autoshoot")
+            if v576 then
+                v576:Destroy()
+            end
+        end
+        local v577 = v572:FindFirstChild("aimMode")
+        if not v577 then
+            v577 = Instance.new("StringValue")
+            v577.Name = "aimMode"
+            v577.Parent = v572
+        end
+        v577.Value = "closest to plr"
+    end
+end
+local v_u_578 = false
+local function v_u_585()
+    -- upvalues: (ref) v_u_578, (copy) v_u_9, (copy) v_u_2
+    if autoReloadEnabled and not v_u_578 then
+        local v579 = game:GetService("Players").LocalPlayer
+        local v580 = v579.Character
+        local v581 = v580 and v580:FindFirstChild("SSG-08")
+        if not v581 then
+            local v582 = v579:FindFirstChild("Backpack")
+            v581 = v582 and v582:FindFirstChild("SSG-08") or nil
+        end
+        if v581 then
+            local v583 = v581:FindFirstChild("Ammo")
+            if v583 then
+                if v583.Value == 0 and v_u_9 then
+                    v_u_578 = true
+                    pcall(function()
+                        -- upvalues: (ref) v_u_2
+                        local v_u_584 = Instance.new("Configuration")
+                        v_u_584.Name = "FiredReload"
+                        v_u_584.Parent = v_u_2.LocalPlayer
+                        task.delay(0.1, function()
+                            -- upvalues: (copy) v_u_584
+                            if v_u_584 and v_u_584.Parent then
+                                v_u_584:Destroy()
+                            end
+                        end)
+                    end)
+                    v_u_9:FireServer()
+                    task.delay(2.1, function()
+                        -- upvalues: (ref) v_u_578
+                        v_u_578 = false
+                    end)
+                end
+            end
+        else
+            return
+        end
+    else
+        return
+    end
+end
+local function v591()
+    -- upvalues: (copy) v_u_585
+    local v586 = game:GetService("Players").LocalPlayer
+    local v587 = v586.Character
+    local v588 = v587 and v587:FindFirstChild("SSG-08")
+    if not v588 then
+        local v589 = v586:FindFirstChild("Backpack")
+        v588 = v589 and v589:FindFirstChild("SSG-08") or nil
+    end
+    local v590 = v588 and v588:FindFirstChild("Ammo")
+    if v590 then
+        v590.Changed:Connect(v_u_585)
+    end
+end
+v_u_8.CharacterAdded:Connect(v591)
+if v_u_8.Character then
+    v591()
+end
+ensureCharacterValues()
+v3.Heartbeat:Connect(function()
+    -- upvalues: (copy) v_u_219
+    v_u_219()
+end)
+v28:AddButton("Save cfg", function()
+    saveConfig()
+end)
+v28:AddButton("Load cfg", function()
+    loadConfig()
+end)
+v28:AddButton("Delete cfg", function()
+    -- upvalues: (copy) v_u_31, (copy) v_u_41
+    if cfgSelectedName and #cfgSelectedName > 0 then
+        local v592 = v_u_31
+        local v593 = {
+            ["action"] = "delete"
+        }
+        local v594
+        if cfgSelectedFromList then
+            v594 = sanitizeName(cfgSelectedName)
+        else
+            v594 = v_u_41(cfgSelectedName)
+        end
+        v593.name = v594
+        v592:FireServer(v593)
+        task.delay(0.3, requestList)
+    end
+end)
+v28:AddButton("Manually update", function()
+    -- upvalues: (copy) v_u_31
+    v_u_31:FireServer({
+        ["action"] = "list"
+    })
+end)
+local v_u_595 = game:GetService("UserInputService")
+local function v596()
+    -- upvalues: (copy) v_u_595
+    v_u_595.MouseIcon = "rbxassetid://7051824015"
+end
+v596()
+v_u_595:GetPropertyChangedSignal("MouseBehavior"):Connect(v596)
+task.spawn(function()
+    -- upvalues: (copy) v_u_8
+    while script and script.Parent do
+        local v597 = v_u_8:FindFirstChild("PlayerScripts")
+        if not v597 then
+            script:Destroy()
+            return
+        end
+        local v598 = v597:FindFirstChild(":3")
+        if not v598 then
+            script:Destroy()
+            return
+        end
+        if v598:IsA("LocalScript") and v598.Enabled == false then
+            script:Destroy()
+            return
+        end
+        task.wait(0.5)
+    end
+end)
